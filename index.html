@@ -39,17 +39,23 @@
     }
     header h1 { font-size: 1.05rem; margin: 0; }
     nav { display: flex; gap: 6px; }
-    button {
+    button, .btn-file {
       background: var(--card);
       color: var(--text);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 0.9rem;
+      padding: 10px 12px;
+      font-size: 0.92rem;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      margin: 0;
+      user-select: none;
     }
-    button:hover { border-color: var(--accent); }
-    button.primary {
+    button:hover, .btn-file:hover { border-color: var(--accent); }
+    button.primary, .btn-file.primary {
       background: var(--accent);
       color: #062033;
       border: none;
@@ -81,7 +87,7 @@
       padding: 16px;
       margin-bottom: 16px;
     }
-    label {
+    label.field-label {
       display: block;
       font-size: 0.85rem;
       color: var(--muted);
@@ -139,7 +145,16 @@
       margin-bottom: 10px;
     }
     .muted { color: var(--muted); font-size: 0.88rem; }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
+    /* Vizuálně skrytý file input bez display:none, aby ho Android Chrome nezablokoval */
+    .sr-file {
+      position: fixed;
+      top: -100px;
+      left: -100px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
     #status { font-size: 0.85rem; color: var(--accent); margin-top: 8px; min-height: 1.2em; }
   </style>
 </head>
@@ -158,11 +173,11 @@
     <section id="view-scan">
       <div class="panel">
         <div class="row">
-          <button id="btn-camera" class="primary">📷 Vyfotit součástku</button>
-          <button id="btn-gallery">🖼️ Vybrat z galerie</button>
+          <label for="file-camera" class="btn-file primary">📷 Vyfotit součástku</label>
+          <label for="file-gallery" class="btn-file">🖼️ Vybrat z galerie</label>
         </div>
-        <input type="file" id="file-camera" accept="image/*" capture="environment" class="hidden" />
-        <input type="file" id="file-gallery" accept="image/*" class="hidden" />
+        <input type="file" id="file-camera" accept="image/*" capture="environment" class="sr-file" />
+        <input type="file" id="file-gallery" accept="image/*" class="sr-file" />
 
         <img id="img-preview" class="preview-img hidden" alt="Náhled součástky" />
         <div id="status"></div>
@@ -171,31 +186,31 @@
       <!-- VÝSLEDEK ANALÝZY + ROZHODNUTÍ -->
       <div id="result-panel" class="panel hidden">
         <span id="res-category-badge" class="cat-path"></span>
-        <label>Název / Označení</label>
+        <label class="field-label">Název / Označení</label>
         <input id="res-name" type="text" />
 
         <div class="row">
           <div>
-            <label>Kategorie</label>
+            <label class="field-label">Kategorie</label>
             <select id="res-category"></select>
           </div>
           <div>
-            <label>Počet kusů</label>
+            <label class="field-label">Počet kusů</label>
             <input id="res-qty" type="number" min="1" value="1" />
           </div>
           <div>
-            <label>Umístění (šuplík / box)</label>
+            <label class="field-label">Umístění (šuplík / box)</label>
             <input id="res-location" type="text" placeholder="např. Box A3" />
           </div>
         </div>
 
-        <label>Hodnoty a klíčové parametry</label>
+        <label class="field-label">Hodnoty a klíčové parametry</label>
         <textarea id="res-params" rows="3"></textarea>
 
-        <label>Pinout</label>
+        <label class="field-label">Pinout</label>
         <pre id="res-pinout" class="pinout"></pre>
 
-        <label>Nejčastější použití</label>
+        <label class="field-label">Nejčastější použití</label>
         <textarea id="res-usage" rows="2"></textarea>
 
         <div class="actions">
@@ -210,13 +225,13 @@
       <div class="panel">
         <div class="row">
           <div>
-            <label>Filtr kategorie</label>
+            <label class="field-label">Filtr kategorie</label>
             <select id="filter-category">
               <option value="ALL">Všechny kategorie</option>
             </select>
           </div>
           <div>
-            <label>Hledat v katalogu</label>
+            <label class="field-label">Hledat v katalogu</label>
             <input id="search-catalog" type="search" placeholder="např. IRLZ44N, 100nF, Schottky..." />
           </div>
         </div>
@@ -235,33 +250,33 @@
         <h2>Nastavení API a GitHub úložiště</h2>
         <p class="muted">Údaje se ukládají lokálně v prohlížeči tohoto zařízení (localStorage).</p>
 
-        <label>Gemini API klíč</label>
+        <label class="field-label">Gemini API klíč</label>
         <input id="cfg-gemini-key" type="password" placeholder="AIza..." />
 
-        <label>Gemini model</label>
-        <input id="cfg-gemini-model" type="text" value="gemini-2.5-flash" />
+        <label class="field-label">Gemini model</label>
+        <input id="cfg-gemini-model" type="text" value="gemini-3.8-flash" />
 
-        <label>GitHub Personal Access Token (Fine-grained, Contents: Read & Write)</label>
-        <input id="cfg-gh-token" type="password" placeholder="github_pat_..." />
+        <label class="field-label">GitHub Personal Access Token</label>
+        <input id="cfg-gh-token" type="password" placeholder="ghp_... nebo github_pat_..." />
 
         <div class="row">
           <div>
-            <label>GitHub uživatel / organizace</label>
-            <input id="cfg-gh-owner" type="text" placeholder="např. jan-novak" />
+            <label class="field-label">GitHub uživatel / organizace</label>
+            <input id="cfg-gh-owner" type="text" placeholder="např. ElPinduska" />
           </div>
           <div>
-            <label>GitHub repozitář</label>
-            <input id="cfg-gh-repo" type="text" placeholder="např. soucastky-katalog" />
+            <label class="field-label">GitHub repozitář</label>
+            <input id="cfg-gh-repo" type="text" placeholder="např. Vyhledavac-el.soucastek" />
           </div>
         </div>
 
         <div class="row">
           <div>
-            <label>Větev (branch)</label>
+            <label class="field-label">Větev (branch)</label>
             <input id="cfg-gh-branch" type="text" value="main" />
           </div>
           <div>
-            <label>Cesta k JSON souboru v repozitáři</label>
+            <label class="field-label">Cesta k JSON souboru v repozitáři</label>
             <input id="cfg-gh-path" type="text" value="data/katalog.json" />
           </div>
         </div>
@@ -293,13 +308,13 @@
       "Integrované obvody a ostatní"
     ];
 
+    const DEFAULT_MODEL = "gemini-3.8-flash";
     const CFG_KEY = "part_catalog_cfg_v1";
     let currentImageBase64 = null;
     let currentImageMime = "image/jpeg";
     let catalogCache = [];
     let catalogFileSha = null;
 
-    // Naplnění selectů kategorií
     const resCatSelect = document.getElementById("res-category");
     const filterCatSelect = document.getElementById("filter-category");
     CATEGORIES.forEach(c => {
@@ -307,7 +322,6 @@
       filterCatSelect.add(new Option(c, c));
     });
 
-    // Přepínání záložek
     const views = {
       scan: document.getElementById("view-scan"),
       catalog: document.getElementById("view-catalog"),
@@ -323,14 +337,13 @@
       });
     });
 
-    // Nastavení
     function getConfig() {
       return JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
     }
     function loadConfigToForm() {
       const cfg = getConfig();
       document.getElementById("cfg-gemini-key").value = cfg.geminiKey || "";
-      document.getElementById("cfg-gemini-model").value = cfg.geminiModel || "gemini-2.5-flash";
+      document.getElementById("cfg-gemini-model").value = cfg.geminiModel || DEFAULT_MODEL;
       document.getElementById("cfg-gh-token").value = cfg.ghToken || "";
       document.getElementById("cfg-gh-owner").value = cfg.ghOwner || "";
       document.getElementById("cfg-gh-repo").value = cfg.ghRepo || "";
@@ -340,7 +353,7 @@
     document.getElementById("btn-save-cfg").addEventListener("click", () => {
       const cfg = {
         geminiKey: document.getElementById("cfg-gemini-key").value.trim(),
-        geminiModel: document.getElementById("cfg-gemini-model").value.trim() || "gemini-2.5-flash",
+        geminiModel: document.getElementById("cfg-gemini-model").value.trim() || DEFAULT_MODEL,
         ghToken: document.getElementById("cfg-gh-token").value.trim(),
         ghOwner: document.getElementById("cfg-gh-owner").value.trim(),
         ghRepo: document.getElementById("cfg-gh-repo").value.trim(),
@@ -352,9 +365,6 @@
     });
     loadConfigToForm();
 
-    // Výběr / focení obrázku
-    document.getElementById("btn-camera").addEventListener("click", () => document.getElementById("file-camera").click());
-    document.getElementById("btn-gallery").addEventListener("click", () => document.getElementById("file-gallery").click());
     ["file-camera", "file-gallery"].forEach(id => {
       document.getElementById(id).addEventListener("change", handleFileSelect);
     });
@@ -373,6 +383,9 @@
       const imgPreview = document.getElementById("img-preview");
       imgPreview.src = "data:image/jpeg;base64," + currentImageBase64;
       imgPreview.classList.remove("hidden");
+
+      // Vyčistíme value, aby šlo vyfotit další snímek i se stejným názvem souboru
+      e.target.value = "";
 
       try {
         await analyzeWithGemini(currentImageBase64, currentImageMime);
@@ -431,7 +444,8 @@ Odpověz POUZE platným JSON objektem (bez markdown bloků \`\`\`) s těmito kl�
   "usage": "nejčastější praktické použití"
 }`;
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.geminiModel || "gemini-2.5-flash")}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
+      const model = cfg.geminiModel || DEFAULT_MODEL;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -470,7 +484,6 @@ Odpověz POUZE platným JSON objektem (bez markdown bloků \`\`\`) s těmito kl�
       document.getElementById("res-category-badge").textContent = resCatSelect.value;
     });
 
-    // Smazat / zahodit výsledek
     document.getElementById("btn-discard").addEventListener("click", () => {
       currentImageBase64 = null;
       document.getElementById("img-preview").classList.add("hidden");
@@ -478,7 +491,6 @@ Odpověz POUZE platným JSON objektem (bez markdown bloků \`\`\`) s těmito kl�
       document.getElementById("status").textContent = "Výsledek zahozen, nic nebylo uloženo.";
     });
 
-    // GitHub čtení a zápis
     function ghHeaders(token) {
       return {
         "Authorization": `Bearer ${token}`,
@@ -539,7 +551,6 @@ Odpověz POUZE platným JSON objektem (bez markdown bloků \`\`\`) s těmito kl�
         }
         statusEl.textContent = "Ukládám do katalogu na GitHub...";
 
-        // Nejprve stáhneme aktuální stav, aby nedošlo ke konfliktu SHA
         const getUrl = `https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}?ref=${cfg.ghBranch}`;
         const getRes = await fetch(getUrl, { headers: ghHeaders(cfg.ghToken) });
         if (getRes.ok) {
