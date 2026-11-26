@@ -3,7 +3,7 @@
     "id": 1795727308508,
     "addedAt": "2026-11-26",
     "name": "IRLR8726 (značení LR8726)",
-    "category": "Tranzistory > Unipolární (MOSFET) > P-kanál",
+    "category": "Tranzistory > Unipolární (MOSFET) > N-kanál",
     "qty": 7,
     "location": "V praci",
     "params": "V_DSS = 30 V, I_D = 86 A (při T_C = 25 °C), R_DS(on) = 5,8 mΩ (při V_GS = 10 V) / 8,0 mΩ (při V_GS = 4,5 V), Logic-Level buzení, pouzdro D-PAK (TO-252)",
