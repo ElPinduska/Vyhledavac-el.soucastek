@@ -146,7 +146,6 @@
     }
     .muted { color: var(--muted); font-size: 0.88rem; }
     .hidden { display: none !important; }
-    /* Vizuálně skrytý file input bez display:none, aby ho Android Chrome nezablokoval */
     .sr-file {
       position: fixed;
       top: -100px;
@@ -155,7 +154,7 @@
       height: 1px;
       opacity: 0;
     }
-    #status { font-size: 0.85rem; color: var(--accent); margin-top: 8px; min-height: 1.2em; }
+    #status { font-size: 0.85rem; color: var(--accent); margin-top: 8px; min-height: 1.2em; word-break: break-word; }
   </style>
 </head>
 <body>
@@ -373,25 +372,24 @@
       const file = e.target.files?.[0];
       if (!file) return;
       const statusEl = document.getElementById("status");
-      statusEl.textContent = "Zpracovávám snímek a odesílám na Gemini...";
+      statusEl.textContent = "Zmenšuji snímek a odesílám na Gemini...";
       document.getElementById("result-panel").classList.add("hidden");
 
-      const resized = await resizeImageToBase64(file, 1280, 0.82);
-      currentImageBase64 = resized.base64;
-      currentImageMime = "image/jpeg";
-
-      const imgPreview = document.getElementById("img-preview");
-      imgPreview.src = "data:image/jpeg;base64," + currentImageBase64;
-      imgPreview.classList.remove("hidden");
-
-      // Vyčistíme value, aby šlo vyfotit další snímek i se stejným názvem souboru
-      e.target.value = "";
-
       try {
+        const resized = await resizeImageToBase64(file, 1024, 0.78);
+        currentImageBase64 = resized.base64;
+        currentImageMime = "image/jpeg";
+
+        const imgPreview = document.getElementById("img-preview");
+        imgPreview.src = "data:image/jpeg;base64," + currentImageBase64;
+        imgPreview.classList.remove("hidden");
+
+        e.target.value = "";
+        statusEl.textContent = "Čekám na odpověď Gemini...";
         await analyzeWithGemini(currentImageBase64, currentImageMime);
         statusEl.textContent = "Hotovo. Zkontroluj údaje a zvol, zda součástku uložit.";
       } catch (err) {
-        statusEl.textContent = "Chyba při analýze: " + err.message;
+        statusEl.textContent = "Chyba při analýze: " + (err.name === "AbortError" ? "Vypršel časový limit (25 s) – server neodpověděl." : err.message);
       }
     }
 
@@ -435,7 +433,7 @@
 Vyber nejbližší kategorii přesně z tohoto seznamu:
 ${CATEGORIES.map(c => "- " + c).join("\n")}
 
-Odpověz POUZE platným JSON objektem (bez markdown bloků \`\`\`) s těmito klíči:
+Odpověz POUZE platným JSON objektem s těmito klíči:
 {
   "name": "přesné označení / název součástky",
   "category": "jedna položka přesně ze seznamu výše",
@@ -446,18 +444,31 @@ Odpověz POUZE platným JSON objektem (bez markdown bloků \`\`\`) s těmito kl�
 
       const model = cfg.geminiModel || DEFAULT_MODEL;
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inlineData: { mimeType, data: base64 } }
-            ]
-          }]
-        })
-      });
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
+
+      let res;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            generationConfig: {
+              responseMimeType: "application/json"
+            },
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType, data: base64 } }
+              ]
+            }]
+          })
+        });
+      } finally {
+        clearTimeout(timer);
+      }
 
       if (!res.ok) {
         const txt = await res.text();
