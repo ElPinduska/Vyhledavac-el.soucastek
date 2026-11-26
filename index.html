@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Katalog součástek – AI & GitHub</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-2: #0b1220;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    header h1 { font-size: 1.05rem; margin: 0; }
+    nav { display: flex; gap: 6px; }
+    button {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary {
+      background: var(--accent);
+      color: #062033;
+      border: none;
+      font-weight: 600;
+    }
+    button.success {
+      background: var(--accent-2);
+      color: #052e16;
+      border: none;
+      font-weight: 600;
+    }
+    button.danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    button.active {
+      outline: 2px solid var(--accent);
+    }
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: var(--card-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 0.95rem;
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 150px; }
+    .preview-img {
+      max-width: 100%;
+      max-height: 260px;
+      border-radius: 10px;
+      display: block;
+      margin: 12px auto;
+      border: 1px solid var(--border);
+    }
+    pre.pinout {
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .cat-path {
+      display: inline-block;
+      font-size: 0.78rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+    }
+    .item-card {
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .muted { color: var(--muted); font-size: 0.88rem; }
+    .hidden { display: none; }
+    #status { font-size: 0.85rem; color: var(--accent); margin-top: 8px; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ AI Katalog součástek</h1>
+    <nav>
+      <button id="tab-scan" class="active">Skenovat</button>
+      <button id="tab-catalog">Katalog</button>
+      <button id="tab-settings">Nastavení</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ZÁLOŽKA 1: SKENOVÁNÍ -->
+    <section id="view-scan">
+      <div class="panel">
+        <div class="row">
+          <button id="btn-camera" class="primary">📷 Vyfotit součástku</button>
+          <button id="btn-gallery">🖼️ Vybrat z galerie</button>
+        </div>
+        <input type="file" id="file-camera" accept="image/*" capture="environment" class="hidden" />
+        <input type="file" id="file-gallery" accept="image/*" class="hidden" />
+
+        <img id="img-preview" class="preview-img hidden" alt="Náhled součástky" />
+        <div id="status"></div>
+      </div>
+
+      <!-- VÝSLEDEK ANALÝZY + ROZHODNUTÍ -->
+      <div id="result-panel" class="panel hidden">
+        <span id="res-category-badge" class="cat-path"></span>
+        <label>Název / Označení</label>
+        <input id="res-name" type="text" />
+
+        <div class="row">
+          <div>
+            <label>Kategorie</label>
+            <select id="res-category"></select>
+          </div>
+          <div>
+            <label>Počet kusů</label>
+            <input id="res-qty" type="number" min="1" value="1" />
+          </div>
+          <div>
+            <label>Umístění (šuplík / box)</label>
+            <input id="res-location" type="text" placeholder="např. Box A3" />
+          </div>
+        </div>
+
+        <label>Hodnoty a klíčové parametry</label>
+        <textarea id="res-params" rows="3"></textarea>
+
+        <label>Pinout</label>
+        <pre id="res-pinout" class="pinout"></pre>
+
+        <label>Nejčastější použití</label>
+        <textarea id="res-usage" rows="2"></textarea>
+
+        <div class="actions">
+          <button id="btn-save-gh" class="success">💾 Uložit do katalogu (GitHub)</button>
+          <button id="btn-discard" class="danger">🗑️ Smazat / Zahodit</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ZÁLOŽKA 2: KATALOG -->
+    <section id="view-catalog" class="hidden">
+      <div class="panel">
+        <div class="row">
+          <div>
+            <label>Filtr kategorie</label>
+            <select id="filter-category">
+              <option value="ALL">Všechny kategorie</option>
+            </select>
+          </div>
+          <div>
+            <label>Hledat v katalogu</label>
+            <input id="search-catalog" type="search" placeholder="např. IRLZ44N, 100nF, Schottky..." />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-refresh-gh">🔄 Načíst z GitHubu</button>
+        </div>
+        <div id="catalog-status" class="muted" style="margin-top:8px;"></div>
+      </div>
+
+      <div id="catalog-list"></div>
+    </section>
+
+    <!-- ZÁLOŽKA 3: NASTAVENÍ -->
+    <section id="view-settings" class="hidden">
+      <div class="panel">
+        <h2>Nastavení API a GitHub úložiště</h2>
+        <p class="muted">Údaje se ukládají lokálně v prohlížeči tohoto zařízení (localStorage).</p>
+
+        <label>Gemini API klíč</label>
+        <input id="cfg-gemini-key" type="password" placeholder="AIza..." />
+
+        <label>Gemini model</label>
+        <input id="cfg-gemini-model" type="text" value="gemini-2.5-flash" />
+
+        <label>GitHub Personal Access Token (Fine-grained, Contents: Read & Write)</label>
+        <input id="cfg-gh-token" type="password" placeholder="github_pat_..." />
+
+        <div class="row">
+          <div>
+            <label>GitHub uživatel / organizace</label>
+            <input id="cfg-gh-owner" type="text" placeholder="např. jan-novak" />
+          </div>
+          <div>
+            <label>GitHub repozitář</label>
+            <input id="cfg-gh-repo" type="text" placeholder="např. soucastky-katalog" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Větev (branch)</label>
+            <input id="cfg-gh-branch" type="text" value="main" />
+          </div>
+          <div>
+            <label>Cesta k JSON souboru v repozitáři</label>
+            <input id="cfg-gh-path" type="text" value="data/katalog.json" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-save-cfg" class="primary">Uložit nastavení</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const CATEGORIES = [
+      "Tranzistory > Bipolární > NPN",
+      "Tranzistory > Bipolární > PNP",
+      "Tranzistory > Unipolární (MOSFET) > N-kanál",
+      "Tranzistory > Unipolární (MOSFET) > P-kanál",
+      "Kondenzátory > Normální",
+      "Kondenzátory > Low ESR",
+      "Kondenzátory > Keramické / Ostatní",
+      "Diody > Univerzální",
+      "Diody > Schottky",
+      "Diody > Rychlé (Fast recovery)",
+      "Diody > Zenerovy / Ostatní",
+      "Varistory",
+      "Triaky",
+      "Tyristory",
+      "LED diody",
+      "Integrované obvody a ostatní"
+    ];
+
+    const CFG_KEY = "part_catalog_cfg_v1";
+    let currentImageBase64 = null;
+    let currentImageMime = "image/jpeg";
+    let catalogCache = [];
+    let catalogFileSha = null;
+
+    // Naplnění selectů kategorií
+    const resCatSelect = document.getElementById("res-category");
+    const filterCatSelect = document.getElementById("filter-category");
+    CATEGORIES.forEach(c => {
+      resCatSelect.add(new Option(c, c));
+      filterCatSelect.add(new Option(c, c));
+    });
+
+    // Přepínání záložek
+    const views = {
+      scan: document.getElementById("view-scan"),
+      catalog: document.getElementById("view-catalog"),
+      settings: document.getElementById("view-settings")
+    };
+    ["scan", "catalog", "settings"].forEach(tab => {
+      document.getElementById("tab-" + tab).addEventListener("click", () => {
+        Object.keys(views).forEach(k => {
+          views[k].classList.toggle("hidden", k !== tab);
+          document.getElementById("tab-" + k).classList.toggle("active", k === tab);
+        });
+        if (tab === "catalog") loadCatalogFromGitHub();
+      });
+    });
+
+    // Nastavení
+    function getConfig() {
+      return JSON.parse(localStorage.getItem(CFG_KEY) || "{}");
+    }
+    function loadConfigToForm() {
+      const cfg = getConfig();
+      document.getElementById("cfg-gemini-key").value = cfg.geminiKey || "";
+      document.getElementById("cfg-gemini-model").value = cfg.geminiModel || "gemini-2.5-flash";
+      document.getElementById("cfg-gh-token").value = cfg.ghToken || "";
+      document.getElementById("cfg-gh-owner").value = cfg.ghOwner || "";
+      document.getElementById("cfg-gh-repo").value = cfg.ghRepo || "";
+      document.getElementById("cfg-gh-branch").value = cfg.ghBranch || "main";
+      document.getElementById("cfg-gh-path").value = cfg.ghPath || "data/katalog.json";
+    }
+    document.getElementById("btn-save-cfg").addEventListener("click", () => {
+      const cfg = {
+        geminiKey: document.getElementById("cfg-gemini-key").value.trim(),
+        geminiModel: document.getElementById("cfg-gemini-model").value.trim() || "gemini-2.5-flash",
+        ghToken: document.getElementById("cfg-gh-token").value.trim(),
+        ghOwner: document.getElementById("cfg-gh-owner").value.trim(),
+        ghRepo: document.getElementById("cfg-gh-repo").value.trim(),
+        ghBranch: document.getElementById("cfg-gh-branch").value.trim() || "main",
+        ghPath: document.getElementById("cfg-gh-path").value.trim() || "data/katalog.json"
+      };
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+      alert("Nastavení uloženo.");
+    });
+    loadConfigToForm();
+
+    // Výběr / focení obrázku
+    document.getElementById("btn-camera").addEventListener("click", () => document.getElementById("file-camera").click());
+    document.getElementById("btn-gallery").addEventListener("click", () => document.getElementById("file-gallery").click());
+    ["file-camera", "file-gallery"].forEach(id => {
+      document.getElementById(id).addEventListener("change", handleFileSelect);
+    });
+
+    async function handleFileSelect(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = "Zpracovávám snímek a odesílám na Gemini...";
+      document.getElementById("result-panel").classList.add("hidden");
+
+      const resized = await resizeImageToBase64(file, 1280, 0.82);
+      currentImageBase64 = resized.base64;
+      currentImageMime = "image/jpeg";
+
+      const imgPreview = document.getElementById("img-preview");
+      imgPreview.src = "data:image/jpeg;base64," + currentImageBase64;
+      imgPreview.classList.remove("hidden");
+
+      try {
+        await analyzeWithGemini(currentImageBase64, currentImageMime);
+        statusEl.textContent = "Hotovo. Zkontroluj údaje a zvol, zda součástku uložit.";
+      } catch (err) {
+        statusEl.textContent = "Chyba při analýze: " + err.message;
+      }
+    }
+
+    function resizeImageToBase64(file, maxDim, quality) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/jpeg", quality);
+            resolve({ base64: dataUrl.split(",")[1] });
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function analyzeWithGemini(base64, mimeType) {
+      const cfg = getConfig();
+      if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
+
+      const prompt = `Identifikuj elektronickou součástku na obrázku v češtině.
+Vyber nejbližší kategorii přesně z tohoto seznamu:
+${CATEGORIES.map(c => "- " + c).join("\n")}
+
+Odpověz POUZE platným JSON objektem (bez markdown bloků \`\`\`) s těmito klíči:
+{
+  "name": "přesné označení / název součástky",
+  "category": "jedna položka přesně ze seznamu výše",
+  "params": "klíčové elektrické hodnoty, napětí, proud, tolerance, pouzdro",
+  "pinout": "přehledný popis nebo ASCII schéma vývodů",
+  "usage": "nejčastější praktické použití"
+}`;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.geminiModel || "gemini-2.5-flash")}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType, data: base64 } }
+            ]
+          }]
+        })
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`HTTP ${res.status}: ${txt}`);
+      }
+
+      const data = await res.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const cleaned = rawText.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      document.getElementById("res-name").value = parsed.name || "Neznámá součástka";
+      const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Integrované obvody a ostatní";
+      resCatSelect.value = matchedCat;
+      document.getElementById("res-category-badge").textContent = matchedCat;
+      document.getElementById("res-params").value = parsed.params || "";
+      document.getElementById("res-pinout").textContent = parsed.pinout || "Neuvedeno";
+      document.getElementById("res-usage").value = parsed.usage || "";
+      document.getElementById("res-qty").value = 1;
+      document.getElementById("result-panel").classList.remove("hidden");
+    }
+
+    resCatSelect.addEventListener("change", () => {
+      document.getElementById("res-category-badge").textContent = resCatSelect.value;
+    });
+
+    // Smazat / zahodit výsledek
+    document.getElementById("btn-discard").addEventListener("click", () => {
+      currentImageBase64 = null;
+      document.getElementById("img-preview").classList.add("hidden");
+      document.getElementById("result-panel").classList.add("hidden");
+      document.getElementById("status").textContent = "Výsledek zahozen, nic nebylo uloženo.";
+    });
+
+    // GitHub čtení a zápis
+    function ghHeaders(token) {
+      return {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json"
+      };
+    }
+
+    function encodeUtf8ToBase64(str) {
+      const bytes = new TextEncoder().encode(str);
+      let bin = "";
+      bytes.forEach(b => bin += String.fromCharCode(b));
+      return btoa(bin);
+    }
+
+    function decodeBase64ToUtf8(b64) {
+      const bin = atob(b64.replace(/\n/g, ""));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    }
+
+    async function loadCatalogFromGitHub() {
+      const cfg = getConfig();
+      const catStatus = document.getElementById("catalog-status");
+      if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) {
+        catStatus.textContent = "Vyplň údaje ke GitHubu v Nastavení.";
+        return;
+      }
+      catStatus.textContent = "Načítám katalog z GitHubu...";
+      const url = `https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}?ref=${cfg.ghBranch}`;
+      const res = await fetch(url, { headers: ghHeaders(cfg.ghToken) });
+
+      if (res.status === 404) {
+        catalogCache = [];
+        catalogFileSha = null;
+        catStatus.textContent = "Soubor katalogu zatím neexistuje – vytvoří se při prvním uložení.";
+        renderCatalog();
+        return;
+      }
+      if (!res.ok) {
+        catStatus.textContent = `Chyba GitHub API (${res.status}).`;
+        return;
+      }
+      const json = await res.json();
+      catalogFileSha = json.sha;
+      catalogCache = JSON.parse(decodeBase64ToUtf8(json.content));
+      catStatus.textContent = `Načteno položek: ${catalogCache.length}`;
+      renderCatalog();
+    }
+
+    document.getElementById("btn-save-gh").addEventListener("click", async () => {
+      const cfg = getConfig();
+      const statusEl = document.getElementById("status");
+      try {
+        if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) {
+          throw new Error("Vyplň údaje ke GitHubu v Nastavení.");
+        }
+        statusEl.textContent = "Ukládám do katalogu na GitHub...";
+
+        // Nejprve stáhneme aktuální stav, aby nedošlo ke konfliktu SHA
+        const getUrl = `https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}?ref=${cfg.ghBranch}`;
+        const getRes = await fetch(getUrl, { headers: ghHeaders(cfg.ghToken) });
+        if (getRes.ok) {
+          const gJson = await getRes.json();
+          catalogFileSha = gJson.sha;
+          catalogCache = JSON.parse(decodeBase64ToUtf8(gJson.content));
+        } else if (getRes.status === 404) {
+          catalogFileSha = null;
+          catalogCache = [];
+        }
+
+        const newItem = {
+          id: Date.now(),
+          addedAt: new Date().toISOString().slice(0, 10),
+          name: document.getElementById("res-name").value.trim(),
+          category: resCatSelect.value,
+          qty: Number(document.getElementById("res-qty").value) || 1,
+          location: document.getElementById("res-location").value.trim(),
+          params: document.getElementById("res-params").value.trim(),
+          pinout: document.getElementById("res-pinout").textContent.trim(),
+          usage: document.getElementById("res-usage").value.trim()
+        };
+
+        catalogCache.unshift(newItem);
+
+        const putBody = {
+          message: `Přidána součástka: ${newItem.name}`,
+          content: encodeUtf8ToBase64(JSON.stringify(catalogCache, null, 2)),
+          branch: cfg.ghBranch
+        };
+        if (catalogFileSha) putBody.sha = catalogFileSha;
+
+        const putRes = await fetch(`https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}`, {
+          method: "PUT",
+          headers: ghHeaders(cfg.ghToken),
+          body: JSON.stringify(putBody)
+        });
+
+        if (!putRes.ok) {
+          const errTxt = await putRes.text();
+          throw new Error(`GitHub zápis selhal (${putRes.status}): ${errTxt}`);
+        }
+
+        const putJson = await putRes.json();
+        catalogFileSha = putJson.content.sha;
+        statusEl.textContent = `Uloženo do kategorie „${newItem.category}“ na GitHubu!`;
+        document.getElementById("result-panel").classList.add("hidden");
+      } catch (err) {
+        statusEl.textContent = "Chyba ukládání: " + err.message;
+      }
+    });
+
+    function renderCatalog() {
+      const listEl = document.getElementById("catalog-list");
+      const selectedCat = filterCatSelect.value;
+      const query = document.getElementById("search-catalog").value.trim().toLowerCase();
+
+      const filtered = catalogCache.filter(item => {
+        const matchCat = selectedCat === "ALL" || item.category === selectedCat;
+        const haystack = `${item.name} ${item.category} ${item.params} ${item.usage} ${item.location}`.toLowerCase();
+        const matchQuery = !query || haystack.includes(query);
+        return matchCat && matchQuery;
+      });
+
+      if (!filtered.length) {
+        listEl.innerHTML = `<div class="panel muted">Žádné součástky neodpovídají filtru.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(item => `
+        <div class="item-card">
+          <span class="cat-path">${escapeHtml(item.category)}</span>
+          <div><strong>${escapeHtml(item.name)}</strong> — <span class="muted">${item.qty} ks${item.location ? ` · ${escapeHtml(item.location)}` : ""} · ${item.addedAt || ""}</span></div>
+          ${item.params ? `<div style="margin-top:6px;"><strong>Parametry:</strong> ${escapeHtml(item.params)}</div>` : ""}
+          ${item.pinout ? `<pre class="pinout" style="margin-top:6px;">${escapeHtml(item.pinout)}</pre>` : ""}
+          ${item.usage ? `<div class="muted" style="margin-top:4px;"><strong>Použití:</strong> ${escapeHtml(item.usage)}</div>` : ""}
+        </div>
+      `).join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s || "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+    }
+
+    document.getElementById("btn-refresh-gh").addEventListener("click", loadCatalogFromGitHub);
+    filterCatSelect.addEventListener("change", renderCatalog);
+    document.getElementById("search-catalog").addEventListener("input", renderCatalog);
+  </script>
+</body>
+</html>
