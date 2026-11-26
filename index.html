@@ -54,6 +54,10 @@
       margin: 0;
       user-select: none;
     }
+    button.sm {
+      padding: 6px 10px;
+      font-size: 0.82rem;
+    }
     button:hover, .btn-file:hover { border-color: var(--accent); }
     button.primary, .btn-file.primary {
       background: var(--accent);
@@ -128,6 +132,12 @@
       margin-top: 14px;
       flex-wrap: wrap;
     }
+    .item-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
     .cat-path {
       display: inline-block;
       font-size: 0.78rem;
@@ -143,6 +153,11 @@
       border-radius: 10px;
       padding: 12px;
       margin-bottom: 10px;
+    }
+    .edit-box {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
     }
     .muted { color: var(--muted); font-size: 0.88rem; }
     .hidden { display: none !important; }
@@ -195,11 +210,11 @@
           </div>
           <div>
             <label class="field-label">Počet kusů</label>
-            <input id="res-qty" type="number" min="1" value="1" />
+            <input id="res-qty" type="number" min="0" value="1" />
           </div>
           <div>
             <label class="field-label">Umístění (šuplík / box)</label>
-            <input id="res-location" type="text" placeholder="např. Box A3" />
+            <input id="res-location" type="text" placeholder="např. Box A3 nebo Nezařazené" />
           </div>
         </div>
 
@@ -231,7 +246,7 @@
           </div>
           <div>
             <label class="field-label">Hledat v katalogu</label>
-            <input id="search-catalog" type="search" placeholder="např. IRLZ44N, 100nF, Schottky..." />
+            <input id="search-catalog" type="search" placeholder="např. IRLZ44N, 100nF, Nezařazené..." />
           </div>
         </div>
         <div class="actions">
@@ -300,17 +315,15 @@
       "Diody > Schottky",
       "Diody > Rychlé (Fast recovery)",
       "Diody > Zenerovy / Ostatní",
-      "Varistory, tranzily",
+      "Varistory",
       "Triaky",
       "Tyristory",
       "LED diody",
-      "Optočleny",
-      "Integrované obvody a ostatní"
       "Nezařazené",
+      "Integrované obvody a ostatní"
     ];
 
     const DEFAULT_MODEL = "gemini-4-hydrogen";
-    // Seznam záložních modelů, pokud selže primární model z Nastavení
     const FALLBACK_MODELS = [
       "gemini-4-hydrogen",
       "gemini-3.8-flash",
@@ -322,6 +335,7 @@
     let currentImageMime = "image/jpeg";
     let catalogCache = [];
     let catalogFileSha = null;
+    let editingItemId = null;
 
     const resCatSelect = document.getElementById("res-category");
     const filterCatSelect = document.getElementById("filter-category");
@@ -510,7 +524,6 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 }`;
 
       const preferred = (cfg.geminiModel || DEFAULT_MODEL).trim();
-      // Sestavíme seznam modelů bez duplicit: nejdřív zvolený model, pak zálohy
       const candidateModels = [...new Set([preferred, ...FALLBACK_MODELS])];
       const errors = [];
 
@@ -523,7 +536,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           const parsed = await callSingleModel(model, cfg.geminiKey, base64, mimeType, prompt, statusEl);
 
           document.getElementById("res-name").value = parsed.name || "Neznámá součástka";
-          const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Integrované obvody a ostatní";
+          const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Nezařazené";
           resCatSelect.value = matchedCat;
           document.getElementById("res-category-badge").textContent = matchedCat;
           document.getElementById("res-params").value = parsed.params || "";
@@ -574,6 +587,46 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       return new TextDecoder().decode(bytes);
     }
 
+    async function fetchLatestCatalog(cfg) {
+      const getUrl = `https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}?ref=${cfg.ghBranch}`;
+      const getRes = await fetch(getUrl, { headers: ghHeaders(cfg.ghToken) });
+      if (getRes.ok) {
+        const gJson = await getRes.json();
+        catalogFileSha = gJson.sha;
+        catalogCache = JSON.parse(decodeBase64ToUtf8(gJson.content));
+        return true;
+      }
+      if (getRes.status === 404) {
+        catalogFileSha = null;
+        catalogCache = [];
+        return true;
+      }
+      throw new Error(`Chyba čtení z GitHubu (${getRes.status}).`);
+    }
+
+    async function saveCatalogToGitHub(cfg, commitMessage) {
+      const putBody = {
+        message: commitMessage,
+        content: encodeUtf8ToBase64(JSON.stringify(catalogCache, null, 2)),
+        branch: cfg.ghBranch
+      };
+      if (catalogFileSha) putBody.sha = catalogFileSha;
+
+      const putRes = await fetch(`https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}`, {
+        method: "PUT",
+        headers: ghHeaders(cfg.ghToken),
+        body: JSON.stringify(putBody)
+      });
+
+      if (!putRes.ok) {
+        const errTxt = await putRes.text();
+        throw new Error(`GitHub zápis selhal (${putRes.status}): ${errTxt}`);
+      }
+
+      const putJson = await putRes.json();
+      catalogFileSha = putJson.content.sha;
+    }
+
     async function loadCatalogFromGitHub() {
       const cfg = getConfig();
       const catStatus = document.getElementById("catalog-status");
@@ -582,25 +635,13 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         return;
       }
       catStatus.textContent = "Načítám katalog z GitHubu...";
-      const url = `https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}?ref=${cfg.ghBranch}`;
-      const res = await fetch(url, { headers: ghHeaders(cfg.ghToken) });
-
-      if (res.status === 404) {
-        catalogCache = [];
-        catalogFileSha = null;
-        catStatus.textContent = "Soubor katalogu zatím neexistuje – vytvoří se při prvním uložení.";
+      try {
+        await fetchLatestCatalog(cfg);
+        catStatus.textContent = `Načteno položek: ${catalogCache.length}`;
         renderCatalog();
-        return;
+      } catch (err) {
+        catStatus.textContent = err.message;
       }
-      if (!res.ok) {
-        catStatus.textContent = `Chyba GitHub API (${res.status}).`;
-        return;
-      }
-      const json = await res.json();
-      catalogFileSha = json.sha;
-      catalogCache = JSON.parse(decodeBase64ToUtf8(json.content));
-      catStatus.textContent = `Načteno položek: ${catalogCache.length}`;
-      renderCatalog();
     }
 
     document.getElementById("btn-save-gh").addEventListener("click", async () => {
@@ -611,24 +652,14 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           throw new Error("Vyplň údaje ke GitHubu v Nastavení.");
         }
         statusEl.textContent = "Ukládám do katalogu na GitHub...";
-
-        const getUrl = `https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}?ref=${cfg.ghBranch}`;
-        const getRes = await fetch(getUrl, { headers: ghHeaders(cfg.ghToken) });
-        if (getRes.ok) {
-          const gJson = await getRes.json();
-          catalogFileSha = gJson.sha;
-          catalogCache = JSON.parse(decodeBase64ToUtf8(gJson.content));
-        } else if (getRes.status === 404) {
-          catalogFileSha = null;
-          catalogCache = [];
-        }
+        await fetchLatestCatalog(cfg);
 
         const newItem = {
           id: Date.now(),
           addedAt: new Date().toISOString().slice(0, 10),
           name: document.getElementById("res-name").value.trim(),
           category: resCatSelect.value,
-          qty: Number(document.getElementById("res-qty").value) || 1,
+          qty: Math.max(0, Number(document.getElementById("res-qty").value) || 0),
           location: document.getElementById("res-location").value.trim(),
           params: document.getElementById("res-params").value.trim(),
           pinout: document.getElementById("res-pinout").textContent.trim(),
@@ -636,33 +667,107 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         };
 
         catalogCache.unshift(newItem);
+        await saveCatalogToGitHub(cfg, `Přidána součástka: ${newItem.name}`);
 
-        const putBody = {
-          message: `Přidána součástka: ${newItem.name}`,
-          content: encodeUtf8ToBase64(JSON.stringify(catalogCache, null, 2)),
-          branch: cfg.ghBranch
-        };
-        if (catalogFileSha) putBody.sha = catalogFileSha;
-
-        const putRes = await fetch(`https://api.github.com/repos/${cfg.ghOwner}/${cfg.ghRepo}/contents/${cfg.ghPath}`, {
-          method: "PUT",
-          headers: ghHeaders(cfg.ghToken),
-          body: JSON.stringify(putBody)
-        });
-
-        if (!putRes.ok) {
-          const errTxt = await putRes.text();
-          throw new Error(`GitHub zápis selhal (${putRes.status}): ${errTxt}`);
-        }
-
-        const putJson = await putRes.json();
-        catalogFileSha = putJson.content.sha;
         statusEl.textContent = `Uloženo do kategorie „${newItem.category}“ na GitHubu!`;
         document.getElementById("result-panel").classList.add("hidden");
       } catch (err) {
         statusEl.textContent = "Chyba ukládání: " + err.message;
       }
     });
+
+    async function adjustItemQty(itemId, delta) {
+      const cfg = getConfig();
+      const catStatus = document.getElementById("catalog-status");
+      if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) {
+        catStatus.textContent = "Vyplň údaje ke GitHubu v Nastavení.";
+        return;
+      }
+      catStatus.textContent = "Aktualizuji počet kusů na GitHubu...";
+      try {
+        await fetchLatestCatalog(cfg);
+        const idx = catalogCache.findIndex(x => String(x.id) === String(itemId));
+        if (idx === -1) throw new Error("Položka v katalogu nenalezena.");
+
+        const nextQty = Math.max(0, (Number(catalogCache[idx].qty) || 0) + delta);
+        catalogCache[idx].qty = nextQty;
+        await saveCatalogToGitHub(cfg, `Změna počtu kusů (${catalogCache[idx].name}): ${nextQty} ks`);
+
+        catStatus.textContent = `Uloženo: ${catalogCache[idx].name} má nyní ${nextQty} ks.`;
+        renderCatalog();
+      } catch (err) {
+        catStatus.textContent = err.message;
+      }
+    }
+
+    async function deleteItem(itemId) {
+      const cfg = getConfig();
+      const catStatus = document.getElementById("catalog-status");
+      if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) {
+        catStatus.textContent = "Vyplň údaje ke GitHubu v Nastavení.";
+        return;
+      }
+      const target = catalogCache.find(x => String(x.id) === String(itemId));
+      if (!confirm(`Opravdu smazat součástku „${target?.name || ""}“ z katalogu?`)) return;
+
+      catStatus.textContent = "Mažu položku z GitHubu...";
+      try {
+        await fetchLatestCatalog(cfg);
+        catalogCache = catalogCache.filter(x => String(x.id) !== String(itemId));
+        if (String(editingItemId) === String(itemId)) editingItemId = null;
+        await saveCatalogToGitHub(cfg, `Smazána součástka: ${target?.name || itemId}`);
+
+        catStatus.textContent = "Položka smazána.";
+        renderCatalog();
+      } catch (err) {
+        catStatus.textContent = err.message;
+      }
+    }
+
+    async function saveEditedItem(itemId) {
+      const cfg = getConfig();
+      const catStatus = document.getElementById("catalog-status");
+      if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) {
+        catStatus.textContent = "Vyplň údaje ke GitHubu v Nastavení.";
+        return;
+      }
+
+      const nameVal = document.getElementById(`edit-name-${itemId}`).value.trim();
+      const catVal = document.getElementById(`edit-cat-${itemId}`).value;
+      const qtyVal = Math.max(0, Number(document.getElementById(`edit-qty-${itemId}`).value) || 0);
+      const locVal = document.getElementById(`edit-loc-${itemId}`).value.trim();
+      const paramsVal = document.getElementById(`edit-params-${itemId}`).value.trim();
+      const usageVal = document.getElementById(`edit-usage-${itemId}`).value.trim();
+
+      catStatus.textContent = "Ukládám úpravy na GitHub...";
+      try {
+        await fetchLatestCatalog(cfg);
+        const idx = catalogCache.findIndex(x => String(x.id) === String(itemId));
+        if (idx === -1) throw new Error("Položka v katalogu nenalezena.");
+
+        catalogCache[idx] = {
+          ...catalogCache[idx],
+          name: nameVal || catalogCache[idx].name,
+          category: catVal,
+          qty: qtyVal,
+          location: locVal,
+          params: paramsVal,
+          usage: usageVal
+        };
+
+        await saveCatalogToGitHub(cfg, `Úprava součástky: ${catalogCache[idx].name}`);
+        editingItemId = null;
+        catStatus.textContent = `Uloženy změny u „${catalogCache[idx].name}“ (${qtyVal} ks, ${catVal}).`;
+        renderCatalog();
+      } catch (err) {
+        catStatus.textContent = err.message;
+      }
+    }
+
+    function buildCategoryOptionsHtml(selectedCategory) {
+      const opts = [...new Set([...CATEGORIES, selectedCategory].filter(Boolean))];
+      return opts.map(c => `<option value="${escapeHtml(c)}" ${c === selectedCategory ? "selected" : ""}>${escapeHtml(c)}</option>`).join("");
+    }
 
     function renderCatalog() {
       const listEl = document.getElementById("catalog-list");
@@ -681,15 +786,63 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         return;
       }
 
-      listEl.innerHTML = filtered.map(item => `
+      listEl.innerHTML = filtered.map(item => {
+        const isEditing = String(editingItemId) === String(item.id);
+        return `
         <div class="item-card">
           <span class="cat-path">${escapeHtml(item.category)}</span>
-          <div><strong>${escapeHtml(item.name)}</strong> — <span class="muted">${item.qty} ks${item.location ? ` · ${escapeHtml(item.location)}` : ""} · ${item.addedAt || ""}</span></div>
+          <div><strong>${escapeHtml(item.name)}</strong> — <span class="muted">${Number(item.qty) || 0} ks${item.location ? ` · ${escapeHtml(item.location)}` : ""} · ${item.addedAt || ""}</span></div>
           ${item.params ? `<div style="margin-top:6px;"><strong>Parametry:</strong> ${escapeHtml(item.params)}</div>` : ""}
           ${item.pinout ? `<pre class="pinout" style="margin-top:6px;">${escapeHtml(item.pinout)}</pre>` : ""}
           ${item.usage ? `<div class="muted" style="margin-top:4px;"><strong>Použití:</strong> ${escapeHtml(item.usage)}</div>` : ""}
+
+          <div class="item-actions">
+            <button class="sm" onclick="adjustItemQty('${item.id}', -1)">-1 ks</button>
+            <button class="sm" onclick="adjustItemQty('${item.id}', 1)">+1 ks</button>
+            <button class="sm primary" onclick="toggleEditItem('${item.id}')">${isEditing ? "Zavřít úpravy" : "✏️ Upravit"}</button>
+            <button class="sm danger" onclick="deleteItem('${item.id}')">🗑️ Smazat</button>
+          </div>
+
+          ${isEditing ? `
+            <div class="edit-box">
+              <label class="field-label">Název / Označení</label>
+              <input id="edit-name-${item.id}" type="text" value="${escapeHtml(item.name)}" />
+
+              <div class="row">
+                <div>
+                  <label class="field-label">Kategorie</label>
+                  <select id="edit-cat-${item.id}">${buildCategoryOptionsHtml(item.category)}</select>
+                </div>
+                <div>
+                  <label class="field-label">Počet kusů</label>
+                  <input id="edit-qty-${item.id}" type="number" min="0" value="${Number(item.qty) || 0}" />
+                </div>
+                <div>
+                  <label class="field-label">Umístění</label>
+                  <input id="edit-loc-${item.id}" type="text" value="${escapeHtml(item.location || "")}" />
+                </div>
+              </div>
+
+              <label class="field-label">Parametry</label>
+              <textarea id="edit-params-${item.id}" rows="2">${escapeHtml(item.params || "")}</textarea>
+
+              <label class="field-label">Použití</label>
+              <textarea id="edit-usage-${item.id}" rows="2">${escapeHtml(item.usage || "")}</textarea>
+
+              <div class="item-actions">
+                <button class="sm success" onclick="saveEditedItem('${item.id}')">💾 Uložit změny</button>
+                <button class="sm" onclick="toggleEditItem(null)">Zrušit</button>
+              </div>
+            </div>
+          ` : ""}
         </div>
-      `).join("");
+      `;
+      }).join("");
+    }
+
+    function toggleEditItem(itemId) {
+      editingItemId = itemId;
+      renderCatalog();
     }
 
     function escapeHtml(s) {
