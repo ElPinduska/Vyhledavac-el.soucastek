@@ -12,18 +12,6 @@
     "usage": "Rychlé usměrňování ve spínaných zdrojích (SMPS), ochrana proti přepětí a zpětnému proudu, volnoběžné (freewheeling) a tlumicí (snubber) obvody v napájecích adaptérech a měničích."
   },
   {
-    "id": 1795732568799,
-    "addedAt": "2026-11-26",
-    "name": "Neidentifikovatelná součástka (snímek obrazovky)",
-    "type": "Snímek obrazovky aplikace s vnořeným neostrým náhledem",
-    "category": "Nezařazené",
-    "qty": 1,
-    "location": "",
-    "params": "Nelze určit. Obrázek zachycuje snímek obrazovky mobilního prohlížeče s chybovým hlášením HTTP 503 a velmi malým vnořeným snímkem, na kterém není čitelná žádná konkrétní elektronická součástka ani její typové označení.",
-    "pinout": "Nelze určit",
-    "usage": "Pro správnou identifikaci prosím nahrajte přímo ostrou fotografii samotné součástky s čitelným označením."
-  },
-  {
     "id": 1795730760087,
     "addedAt": "2026-11-26",
     "name": "ATtiny13A (ATMEL TINY13A)",
