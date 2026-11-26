@@ -252,8 +252,8 @@
         <label class="field-label">Gemini API klíč</label>
         <input id="cfg-gemini-key" type="password" placeholder="AIza..." />
 
-        <label class="field-label">Gemini model</label>
-        <input id="cfg-gemini-model" type="text" value="gemini-3.8-flash" />
+        <label class="field-label">Preferovaný Gemini model (první v řadě)</label>
+        <input id="cfg-gemini-model" type="text" value="gemini-4-hydrogen" />
 
         <label class="field-label">GitHub Personal Access Token</label>
         <input id="cfg-gh-token" type="password" placeholder="ghp_... nebo github_pat_..." />
@@ -307,7 +307,14 @@
       "Integrované obvody a ostatní"
     ];
 
-    const DEFAULT_MODEL = "gemini-3.8-flash";
+    const DEFAULT_MODEL = "gemini-4-hydrogen";
+    // Seznam záložních modelů, pokud selže primární model z Nastavení
+    const FALLBACK_MODELS = [
+      "gemini-4-hydrogen",
+      "gemini-3.8-flash",
+      "gemini-2.5-flash"
+    ];
+
     const CFG_KEY = "part_catalog_cfg_v1";
     let currentImageBase64 = null;
     let currentImageMime = "image/jpeg";
@@ -389,11 +396,10 @@
         imgPreview.classList.remove("hidden");
 
         e.target.value = "";
-        statusEl.textContent = "Čekám na odpověď Gemini...";
-        await analyzeWithGemini(currentImageBase64, currentImageMime, statusEl);
-        statusEl.textContent = "Hotovo. Zkontroluj údaje a zvol, zda součástku uložit.";
+        const usedModel = await analyzeWithGemini(currentImageBase64, currentImageMime, statusEl);
+        statusEl.textContent = `Hotovo (model: ${usedModel}). Zkontroluj údaje a zvol, zda součástku uložit.`;
       } catch (err) {
-        statusEl.textContent = "Chyba při analýze: " + (err.name === "AbortError" ? "Vypršel časový limit (25 s) – server neodpověděl." : err.message);
+        statusEl.textContent = "Chyba při analýze: " + err.message;
       }
     }
 
@@ -429,27 +435,9 @@
       });
     }
 
-    async function analyzeWithGemini(base64, mimeType, statusEl) {
-      const cfg = getConfig();
-      if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
-
-      const prompt = `Identifikuj elektronickou součástku na obrázku v češtině.
-Vyber nejbližší kategorii přesně z tohoto seznamu:
-${CATEGORIES.map(c => "- " + c).join("\n")}
-
-Odpověz POUZE platným JSON objektem s těmito klíči:
-{
-  "name": "přesné označení / název součástky",
-  "category": "jedna položka přesně ze seznamu výše",
-  "params": "klíčové elektrické hodnoty, napětí, proud, tolerance, pouzdro",
-  "pinout": "přehledný popis nebo ASCII schéma vývodů",
-  "usage": "nejčastější praktické použití"
-}`;
-
-      const model = cfg.geminiModel || DEFAULT_MODEL;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
-
-      const retryDelays = [2000, 4000, 7000];
+    async function callSingleModel(model, apiKey, base64, mimeType, prompt, statusEl) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const retryDelays = [1500, 3500];
       let res;
       let lastErrorText = "";
 
@@ -474,6 +462,9 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
               }]
             })
           });
+        } catch (netErr) {
+          clearTimeout(timer);
+          throw new Error(netErr.name === "AbortError" ? "Timeout (25 s)" : netErr.message);
         } finally {
           clearTimeout(timer);
         }
@@ -484,7 +475,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         if (res.status === 503 && attempt < retryDelays.length) {
           const waitMs = retryDelays[attempt];
           if (statusEl) {
-            statusEl.textContent = `Server Gemini je vytížený (503), zkouším znovu za ${waitMs / 1000} s (pokus ${attempt + 1}/${retryDelays.length})...`;
+            statusEl.textContent = `Model ${model} hlásí 503, zkouším ho znovu za ${waitMs / 1000} s...`;
           }
           await sleep(waitMs);
           continue;
@@ -496,17 +487,56 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       const data = await res.json();
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       const cleaned = rawText.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(cleaned);
+      return JSON.parse(cleaned);
+    }
 
-      document.getElementById("res-name").value = parsed.name || "Neznámá součástka";
-      const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Integrované obvody a ostatní";
-      resCatSelect.value = matchedCat;
-      document.getElementById("res-category-badge").textContent = matchedCat;
-      document.getElementById("res-params").value = parsed.params || "";
-      document.getElementById("res-pinout").textContent = parsed.pinout || "Neuvedeno";
-      document.getElementById("res-usage").value = parsed.usage || "";
-      document.getElementById("res-qty").value = 1;
-      document.getElementById("result-panel").classList.remove("hidden");
+    async function analyzeWithGemini(base64, mimeType, statusEl) {
+      const cfg = getConfig();
+      if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
+
+      const prompt = `Identifikuj elektronickou součástku na obrázku v češtině.
+Vyber nejbližší kategorii přesně z tohoto seznamu:
+${CATEGORIES.map(c => "- " + c).join("\n")}
+
+Odpověz POUZE platným JSON objektem s těmito klíči:
+{
+  "name": "přesné označení / název součástky",
+  "category": "jedna položka přesně ze seznamu výše",
+  "params": "klíčové elektrické hodnoty, napětí, proud, tolerance, pouzdro",
+  "pinout": "přehledný popis nebo ASCII schéma vývodů",
+  "usage": "nejčastější praktické použití"
+}`;
+
+      const preferred = (cfg.geminiModel || DEFAULT_MODEL).trim();
+      // Sestavíme seznam modelů bez duplicit: nejdřív zvolený model, pak zálohy
+      const candidateModels = [...new Set([preferred, ...FALLBACK_MODELS])];
+      const errors = [];
+
+      for (let i = 0; i < candidateModels.length; i++) {
+        const model = candidateModels[i];
+        if (statusEl) {
+          statusEl.textContent = `Zkouším model ${model} (${i + 1}/${candidateModels.length})...`;
+        }
+        try {
+          const parsed = await callSingleModel(model, cfg.geminiKey, base64, mimeType, prompt, statusEl);
+
+          document.getElementById("res-name").value = parsed.name || "Neznámá součástka";
+          const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Integrované obvody a ostatní";
+          resCatSelect.value = matchedCat;
+          document.getElementById("res-category-badge").textContent = matchedCat;
+          document.getElementById("res-params").value = parsed.params || "";
+          document.getElementById("res-pinout").textContent = parsed.pinout || "Neuvedeno";
+          document.getElementById("res-usage").value = parsed.usage || "";
+          document.getElementById("res-qty").value = 1;
+          document.getElementById("result-panel").classList.remove("hidden");
+
+          return model;
+        } catch (err) {
+          errors.push(`${model} → ${err.message}`);
+        }
+      }
+
+      throw new Error("Všechny modely selhaly:\n" + errors.join(" | "));
     }
 
     resCatSelect.addEventListener("change", () => {
