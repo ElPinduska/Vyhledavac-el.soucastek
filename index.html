@@ -368,6 +368,10 @@
       document.getElementById(id).addEventListener("change", handleFileSelect);
     });
 
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     async function handleFileSelect(e) {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -386,7 +390,7 @@
 
         e.target.value = "";
         statusEl.textContent = "Čekám na odpověď Gemini...";
-        await analyzeWithGemini(currentImageBase64, currentImageMime);
+        await analyzeWithGemini(currentImageBase64, currentImageMime, statusEl);
         statusEl.textContent = "Hotovo. Zkontroluj údaje a zvol, zda součástku uložit.";
       } catch (err) {
         statusEl.textContent = "Chyba při analýze: " + (err.name === "AbortError" ? "Vypršel časový limit (25 s) – server neodpověděl." : err.message);
@@ -425,7 +429,7 @@
       });
     }
 
-    async function analyzeWithGemini(base64, mimeType) {
+    async function analyzeWithGemini(base64, mimeType, statusEl) {
       const cfg = getConfig();
       if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
 
@@ -445,34 +449,48 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       const model = cfg.geminiModel || DEFAULT_MODEL;
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
 
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 25000);
-
+      const retryDelays = [2000, 4000, 7000];
       let res;
-      try {
-        res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            generationConfig: {
-              responseMimeType: "application/json"
-            },
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inlineData: { mimeType, data: base64 } }
-              ]
-            }]
-          })
-        });
-      } finally {
-        clearTimeout(timer);
-      }
+      let lastErrorText = "";
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`HTTP ${res.status}: ${txt}`);
+      for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 25000);
+
+        try {
+          res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+              generationConfig: {
+                responseMimeType: "application/json"
+              },
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  { inlineData: { mimeType, data: base64 } }
+                ]
+              }]
+            })
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        if (res.ok) break;
+
+        lastErrorText = await res.text();
+        if (res.status === 503 && attempt < retryDelays.length) {
+          const waitMs = retryDelays[attempt];
+          if (statusEl) {
+            statusEl.textContent = `Server Gemini je vytížený (503), zkouším znovu za ${waitMs / 1000} s (pokus ${attempt + 1}/${retryDelays.length})...`;
+          }
+          await sleep(waitMs);
+          continue;
+        }
+
+        throw new Error(`HTTP ${res.status}: ${lastErrorText}`);
       }
 
       const data = await res.json();
