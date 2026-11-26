@@ -203,6 +203,9 @@
         <label class="field-label">Název / Označení</label>
         <input id="res-name" type="text" />
 
+        <label class="field-label">Základní typ (např. Unipolární tranzistor MOSFET – N-kanál)</label>
+        <input id="res-type" type="text" placeholder="např. Unipolární tranzistor (MOSFET) – N-kanál" />
+
         <div class="row">
           <div>
             <label class="field-label">Kategorie</label>
@@ -246,7 +249,7 @@
           </div>
           <div>
             <label class="field-label">Hledat v katalogu</label>
-            <input id="search-catalog" type="search" placeholder="např. IRLZ44N, 100nF, Nezařazené..." />
+            <input id="search-catalog" type="search" placeholder="např. IRLZ44N, N-kanál, 100nF..." />
           </div>
         </div>
         <div class="actions">
@@ -517,6 +520,7 @@ ${CATEGORIES.map(c => "- " + c).join("\n")}
 Odpověz POUZE platným JSON objektem s těmito klíči:
 {
   "name": "přesné označení / název součástky",
+  "type": "základní typ a charakteristika součástky, např. Unipolární tranzistor (MOSFET) – N-kanál",
   "category": "jedna položka přesně ze seznamu výše",
   "params": "klíčové elektrické hodnoty, napětí, proud, tolerance, pouzdro",
   "pinout": "přehledný popis nebo ASCII schéma vývodů",
@@ -536,6 +540,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           const parsed = await callSingleModel(model, cfg.geminiKey, base64, mimeType, prompt, statusEl);
 
           document.getElementById("res-name").value = parsed.name || "Neznámá součástka";
+          document.getElementById("res-type").value = parsed.type || "";
           const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Nezařazené";
           resCatSelect.value = matchedCat;
           document.getElementById("res-category-badge").textContent = matchedCat;
@@ -658,6 +663,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           id: Date.now(),
           addedAt: new Date().toISOString().slice(0, 10),
           name: document.getElementById("res-name").value.trim(),
+          type: document.getElementById("res-type").value.trim(),
           category: resCatSelect.value,
           qty: Math.max(0, Number(document.getElementById("res-qty").value) || 0),
           location: document.getElementById("res-location").value.trim(),
@@ -733,6 +739,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       }
 
       const nameVal = document.getElementById(`edit-name-${itemId}`).value.trim();
+      const typeVal = document.getElementById(`edit-type-${itemId}`).value.trim();
       const catVal = document.getElementById(`edit-cat-${itemId}`).value;
       const qtyVal = Math.max(0, Number(document.getElementById(`edit-qty-${itemId}`).value) || 0);
       const locVal = document.getElementById(`edit-loc-${itemId}`).value.trim();
@@ -748,6 +755,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         catalogCache[idx] = {
           ...catalogCache[idx],
           name: nameVal || catalogCache[idx].name,
+          type: typeVal,
           category: catVal,
           qty: qtyVal,
           location: locVal,
@@ -776,7 +784,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 
       const filtered = catalogCache.filter(item => {
         const matchCat = selectedCat === "ALL" || item.category === selectedCat;
-        const haystack = `${item.name} ${item.category} ${item.params} ${item.usage} ${item.location}`.toLowerCase();
+        const haystack = `${item.name} ${item.type || ""} ${item.category} ${item.params} ${item.usage} ${item.location}`.toLowerCase();
         const matchQuery = !query || haystack.includes(query);
         return matchCat && matchQuery;
       });
@@ -792,7 +800,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         <div class="item-card">
           <span class="cat-path">${escapeHtml(item.category)}</span>
           <div><strong>${escapeHtml(item.name)}</strong> — <span class="muted">${Number(item.qty) || 0} ks${item.location ? ` · ${escapeHtml(item.location)}` : ""} · ${item.addedAt || ""}</span></div>
-          ${item.params ? `<div style="margin-top:6px;"><strong>Parametry:</strong> ${escapeHtml(item.params)}</div>` : ""}
+          ${item.type ? `<div style="margin-top:6px;"><strong>Základní typ:</strong> ${escapeHtml(item.type)}</div>` : ""}
+          ${item.params ? `<div style="margin-top:4px;"><strong>Parametry:</strong> ${escapeHtml(item.params)}</div>` : ""}
           ${item.pinout ? `<pre class="pinout" style="margin-top:6px;">${escapeHtml(item.pinout)}</pre>` : ""}
           ${item.usage ? `<div class="muted" style="margin-top:4px;"><strong>Použití:</strong> ${escapeHtml(item.usage)}</div>` : ""}
 
@@ -807,6 +816,9 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
             <div class="edit-box">
               <label class="field-label">Název / Označení</label>
               <input id="edit-name-${item.id}" type="text" value="${escapeHtml(item.name)}" />
+
+              <label class="field-label">Základní typ</label>
+              <input id="edit-type-${item.id}" type="text" value="${escapeHtml(item.type || "")}" />
 
               <div class="row">
                 <div>
