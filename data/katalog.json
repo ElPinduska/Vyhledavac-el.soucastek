@@ -50,17 +50,5 @@
     "pinout": "USB-C vstup; B+/B- pro připojení baterie; Out+/Out- pro napájení zátěže",
     "usage": "Nabíjení Li-ion článků (18650 atd.) z USB zdroje s integrovanou ochranou proti přebití a podvybití",
     "replacements": "Modul TP4056 s MicroUSB portem, IP2312 (pro rychlejší nabíjení)"
-  },
-  {
-    "id": 1795727308508,
-    "addedAt": "2026-11-26",
-    "name": "IRLR8726 (značení LR8726)",
-    "category": "Tranzistory > Unipolární (MOSFET) > N-kanál",
-    "qty": 7,
-    "location": "V praci",
-    "params": "V_DSS = 30 V, I_D = 86 A (při T_C = 25 °C), R_DS(on) = 5,8 mΩ (při V_GS = 10 V) / 8,0 mΩ (při V_GS = 4,5 V), Logic-Level buzení, pouzdro D-PAK (TO-252)",
-    "pinout": "Pohled shora (vývody směrem dolů): 1 (vlevo) = Gate (G), 2 (střední zkrácený vývod / horní kovová ploška) = Drain (D), 3 (vpravo) = Source (S)",
-    "usage": "Spínané napájecí zdroje (DC-DC měniče), synchronní usměrnění, řízení stejnosměrných motorů, spínání větších proudů přímo z mikrokontrolérů (5 V logika)",
-    "type": "Unipolírní tranzistor - N-kanál"
   }
 ]
