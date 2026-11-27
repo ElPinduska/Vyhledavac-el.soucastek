@@ -1,17 +1,5 @@
 [
   {
-    "id": 1795768633934,
-    "addedAt": "2026-11-27",
-    "name": "SMD výkonová tlumivka 10 µH (označení 100)",
-    "type": "SMD indukčnost / výkonová cívka (tlumivka), typicky stíněná nebo polostíněná s feritovým jádrem",
-    "category": "Nezařazené",
-    "qty": 1,
-    "location": "Prace",
-    "params": "Indukčnost: 10 µH (kód 100 = 10 × 10⁰ µH), obvyklá tolerance: ±20 %, jmenovitý proud: typicky 1 A až 3 A (dle konkrétní velikosti pouzdra, např. řada CDRH/CD54), pouzdro: SMD se zkosenými rohy",
-    "pinout": "2 vývody (pájecí plošky na spodní straně); cívka je nepolarizovaná (tečka u označení případně značí začátek vinutí)",
-    "usage": "Spínané napájecí zdroje (DC-DC měniče step-down/step-up), filtrace napájecího napětí, potlačení vysokofrekvenčního rušení (EMI)"
-  },
-  {
     "id": 1795767178985,
     "addedAt": "2026-11-27",
     "name": "SMD výkonová tlumivka 10 µH (označení 100)",
