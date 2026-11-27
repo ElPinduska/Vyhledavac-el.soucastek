@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795784115210,
+    "addedAt": "2026-11-27",
+    "name": "TP4056 USB-C nabíjecí modul pro Li-Ion baterie",
+    "type": "Modul pro lineární nabíjení jednočlánkových Li-Ion baterií s ochranou",
+    "category": "Bloky(ESP32,Arduina,nabíjení,měniče....",
+    "qty": 20,
+    "location": "",
+    "params": "Vstupní napětí 4.5V-5.5V, Nabíjecí proud nastavitelný (standardně 1A), Ochrana proti přebití/podbití, USB-C konektor",
+    "pinout": "IN+ / IN-: Vstup napájení; B+ / B-: Připojení baterie; OUT+ / OUT-: Výstup pro zátěž",
+    "usage": "Nabíjení Li-Ion 18650 nebo Li-Pol akumulátorů přes USB, napájení přenosných zařízení",
+    "replacements": "TP4056 Micro-USB moduly, moduly s čipy DW01 / FS8205A"
+  },
+  {
     "id": 1795772009023,
     "addedAt": "2026-11-27",
     "name": "SMD výkonová tlumivka (induktor)",
