@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795807574762,
+    "addedAt": "2026-11-27",
+    "name": "IRLZ44N",
+    "type": "N-kanálový výkonový MOSFET (Logic-Level)",
+    "category": "Tranzistory > Unipolární (MOSFET) > N-kanál",
+    "qty": 1,
+    "location": "",
+    "params": "- Max. napětí Vds: 55V\n- Trvalý/impulzní proud Id: 47A / 160A\n- Prahové napětí Vgs(th): 1V až 2V\n- Napětí pro plné otevření: 4V až 5V (Logic-Level, vhodný pro přímé buzení z MCU)\n- Max. napětí Gate Vgs(max): ±16V\n- Odpor RDS(on): max. 0,022 Ohm (při Vgs=10V)\n- Náboj hradla Qg: 27nC (typicky)\n- Pouzdro: TO-220AB (přesné pouzdro je vhodné ověřit fyzicky)",
+    "pinout": "Čelní pohled (strana s označením):\n1: Gate (G)\n2: Drain (D)\n3: Source (S)\n(Tab/chladič je spojen s pinem 2 - Drain)",
+    "usage": "Spínání zátěže (motory, LED pásky, relé) řízené přímo z digitálních výstupů mikrokontrolérů (Arduino, ESP32, AVR) bez nutnosti budiče.",
+    "replacements": "IRLZ44, IRLZ44Z, IRL540, STP16NF06L, FQP30N06L"
+  },
+  {
     "id": 1795800207858,
     "addedAt": "2026-11-27",
     "name": "SMD tlumivka 100µH (kód 101)",
