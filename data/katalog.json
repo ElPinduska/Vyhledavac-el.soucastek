@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795799970524,
+    "addedAt": "2026-11-27",
+    "name": "SS34",
+    "type": "Schottky dioda",
+    "category": "Diody > Schottky",
+    "qty": 10,
+    "location": "Prace",
+    "params": "40V, 3A, pouzdro DO-214AB (SMC)",
+    "pinout": "Anoda (bez proužku), Katoda (s proužkem)",
+    "usage": "Spínané napájecí zdroje, usměrňovače s nízkým úbytkem napětí, ochrana proti přepólování",
+    "replacements": "SS34A, B340, MBR340"
+  },
+  {
     "id": 1795799791006,
     "addedAt": "2026-11-27",
     "name": "SMD výkonová tlumivka (induktor)",
