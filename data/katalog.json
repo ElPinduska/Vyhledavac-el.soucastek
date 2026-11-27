@@ -51,18 +51,6 @@
     "usage": "DC/DC měniče, filtrování napájecích zdrojů, potlačení elektromagnetického rušení"
   },
   {
-    "id": 1795730760087,
-    "addedAt": "2026-11-26",
-    "name": "ATtiny13A (ATMEL TINY13A)",
-    "type": "8bitový mikrokontrolér AVR (RISC)",
-    "category": "Integrované obvody a ostatní",
-    "qty": 6,
-    "location": "Prace",
-    "params": "Napájecí napětí 1,8 V – 5,5 V; frekvence až 20 MHz; 1 KB Flash, 64 B SRAM, 64 B EEPROM; 6 I/O pinů; 4kanálový 10bitový ADC; pouzdro SOIC-8",
-    "pinout": "1: PB5 (RESET/ADC0) | 8: VCC\n2: PB3 (ADC3/CLKI)  | 7: PB2 (SCK/ADC1)\n3: PB4 (ADC2)       | 6: PB1 (MISO/OC0B)\n4: GND              | 5: PB0 (MOSI/OC0A)",
-    "usage": "Jednoduché řídicí úlohy, časovače, PWM řízení LED či motorů, drobné automatizační projekty a nízkoenergetické aplikace"
-  },
-  {
     "id": 1795727308508,
     "addedAt": "2026-11-26",
     "name": "IRLR8726 (značení LR8726)",
