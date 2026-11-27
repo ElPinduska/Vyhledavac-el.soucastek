@@ -162,6 +162,10 @@
       font-size: 0.85rem;
       white-space: pre-wrap;
     }
+    .params-text {
+      white-space: pre-line;
+      margin-top: 4px;
+    }
     .actions {
       display: flex;
       gap: 10px;
@@ -293,11 +297,11 @@
           </div>
         </div>
 
-        <label class="field-label">Hodnoty, pouzdro a klíčové parametry</label>
-        <textarea id="res-params" rows="3"></textarea>
+        <label class="field-label">Hodnoty, řízení (G/B), limity a pouzdro</label>
+        <textarea id="res-params" rows="5"></textarea>
 
         <label class="field-label">Pinout</label>
-        <textarea id="res-pinout" rows="2"></textarea>
+        <textarea id="res-pinout" rows="3"></textarea>
 
         <label class="field-label">Nejčastější použití</label>
         <textarea id="res-usage" rows="2"></textarea>
@@ -723,17 +727,26 @@
       if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
 
       const isImage = Boolean(payload.base64);
+      const detailRules = `Požadavky na pole "params" (piš přehledně v odrážkách oddělených novým řádkem):
+- U MOSFETů VŽDY uveď: max. napětí Vds, trvalý/impulzní proud Id, prahové napětí Vgs(th), napětí pro plné otevření (Vgs při kterém platí RDS(on), např. 4,5V / 10V a zda jde o Logic-Level), max. povolené napětí na Gate Vgs(max) (např. ±20V), odpor RDS(on), náboj hradla Qg, pouzdro.
+- U bipolárních tranzistorů (NPN/PNP) VŽDY uveď: max. napětí Uceo / Ucbo / Uebo, max. proud Ic, proudové zesílení hFE, saturační napětí Uce(sat) a Ube(sat) + potřebný bázový proud Ib pro plné otevření (saturaci), max. ztrátový výkon Ptot, pouzdro.
+- U diod uveď: typ, max. závěrné napětí Ur, max. proud If, úbytek napětí Uf, rychlost trr (u rychlých), pouzdro.
+- U LDO / stabilizátorů uveď: výstupní napětí, max. vstupní napětí Vin(max), max. proud, úbytek dropout, klidový proud, pouzdro.
+- U kondenzátorů, tlumivek, varistorů, triaků/tyristorů a modulů uveď všechny klíčové mezní hodnoty, napěťové/proudové limity a pouzdro.`;
+
       const prompt = isImage
         ? `Identifikuj elektronickou součástku na obrázku v češtině.
 Vyber nejbližší kategorii přesně z tohoto seznamu:
 ${CATEGORIES.map(c => "- " + c).join("\n")}
+
+${detailRules}
 
 Odpověz POUZE platným JSON objektem s těmito klíči:
 {
   "name": "přesné označení / název součástky",
   "type": "základní typ a charakteristika součástky, např. Unipolární tranzistor (MOSFET) – N-kanál",
   "category": "jedna položka přesně ze seznamu výše",
-  "params": "klíčové elektrické hodnoty, napětí, proud, tolerance, pouzdro",
+  "params": "podrobné elektrické hodnoty a limity podle pravidel výše",
   "pinout": "přehledný popis nebo ASCII schéma vývodů",
   "usage": "nejčastější praktické použití",
   "replacements": "stručný seznam vhodných náhrad nebo ekvivalentů se stejnou funkcí a podobnými parametry (nebo údaj o omezení, pokud jde o specializovaný prvek)"
@@ -742,12 +755,15 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 Vyber nejbližší kategorii přesně z tohoto seznamu:
 ${CATEGORIES.map(c => "- " + c).join("\n")}
 
+${detailRules}
+U pouzdra uveď obvyklou variantu a poznamenej, že přesné pouzdro je vhodné ověřit fyzicky.
+
 Odpověz POUZE platným JSON objektem s těmito klíči:
 {
   "name": "přesné označení / název součástky (vycházej ze zadání ${payload.textQuery})",
   "type": "základní typ a charakteristika součástky, např. Bipolární tranzistor (BJT) – PNP",
   "category": "jedna položka přesně ze seznamu výše",
-  "params": "klíčové elektrické hodnoty, napětí, proud, výkon/zesílení, obvyklé pouzdro (uveď, že přesné pouzdro je potřeba ověřit fyzicky)",
+  "params": "podrobné elektrické hodnoty a limity podle pravidel výše",
   "pinout": "přehledný popis nebo ASCII schéma vývodů pro standardní pouzdro této součástky",
   "usage": "nejčastější praktické použití",
   "replacements": "stručný seznam vhodných náhrad nebo ekvivalentů se stejnou funkcí a podobnými parametry"
@@ -1156,7 +1172,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           ${replMatch ? `<span class="repl-badge">🔁 Shoda v náhradách</span>` : ""}
           <div><strong>${escapeHtml(item.name)}</strong> — <span class="muted">${Number(item.qty) || 0} ks${item.location ? ` · ${escapeHtml(item.location)}` : ""} · ${item.addedAt || ""}</span></div>
           ${item.type ? `<div style="margin-top:6px;"><strong>Základní typ:</strong> ${escapeHtml(item.type)}</div>` : ""}
-          ${item.params ? `<div style="margin-top:4px;"><strong>Parametry:</strong> ${escapeHtml(item.params)}</div>` : ""}
+          ${item.params ? `<div class="params-text"><strong>Parametry:</strong>\n${escapeHtml(item.params)}</div>` : ""}
           ${item.pinout ? `<pre class="pinout" style="margin-top:6px;">${escapeHtml(item.pinout)}</pre>` : ""}
           ${item.usage ? `<div class="muted" style="margin-top:4px;"><strong>Použití:</strong> ${escapeHtml(item.usage)}</div>` : ""}
           ${replText ? `<div class="repl-box ${replMatch ? "highlighted" : ""}"><strong>Náhrady:</strong> ${escapeHtml(replText)}</div>` : ""}
@@ -1192,7 +1208,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
               </div>
 
               <label class="field-label">Parametry</label>
-              <textarea id="edit-params-${item.id}" rows="2">${escapeHtml(item.params || "")}</textarea>
+              <textarea id="edit-params-${item.id}" rows="4">${escapeHtml(item.params || "")}</textarea>
 
               <label class="field-label">Použití</label>
               <textarea id="edit-usage-${item.id}" rows="2">${escapeHtml(item.usage || "")}</textarea>
