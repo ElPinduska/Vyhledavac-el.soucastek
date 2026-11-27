@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795808192999,
+    "addedAt": "2026-11-27",
+    "name": "BC337",
+    "type": "Bipolární tranzistor (BJT) – NPN",
+    "category": "Tranzistory > Bipolární > NPN",
+    "qty": 5,
+    "location": "Práce",
+    "params": "- Uceo: 45V / Ucbo: 50V / Uebo: 5V\n- Max. proud Ic: 800mA (impulzně až 1,5A)\n- Proudové zesílení hFE: 100-630 (dle podtypu)\n- Saturační napětí Uce(sat): max. 0,7V (při Ic=500mA, Ib=50mA)\n- Saturační napětí Ube(sat): max. 1,2V\n- Potřebný bázový proud Ib: cca 50mA pro nasycení při Ic=500mA\n- Max. ztrátový výkon Ptot: 625mW\n- Pouzdro: TO-92 (přesné pouzdro ověřte fyzicky)",
+    "pinout": "Při pohledu na plochou stranu (s nápisem) zleva doprava: 1: Emitor, 2: Báze, 3: Kolektor",
+    "usage": "Spínání zátěží (relé, LED), budič koncových stupňů, všeobecné zesilování v nf obvodech.",
+    "replacements": "BC337-25, BC337-40, BC635, 2N2222A (pozor na odlišné zapojení vývodů), PN2222"
+  },
+  {
     "id": 1795808082633,
     "addedAt": "2026-11-27",
     "name": "LR8726",
