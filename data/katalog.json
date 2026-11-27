@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795799791006,
+    "addedAt": "2026-11-27",
+    "name": "SMD výkonová tlumivka (induktor)",
+    "type": "Pasivní induktivní součástka pro povrchovou montáž",
+    "category": "Tlumivky",
+    "qty": 4,
+    "location": "Prace",
+    "params": "Indukčnost 10 µH, typické pouzdro CD43 nebo podobné, liší se dle fyzických rozměrů a maximálního proudu",
+    "pinout": "Dva vývody na spodní straně, orientace není u pasivní součástky důležitá",
+    "usage": "DC/DC měniče, filtrování napájení, vyhlazování proudových špiček",
+    "replacements": "Jakákoliv SMD tlumivka s indukčností 10 µH a stejným nebo vyšším jmenovitým proudem a kompatibilními rozměry"
+  },
+  {
     "id": 1795799628256,
     "addedAt": "2026-11-27",
     "name": "LR8726",
