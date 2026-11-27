@@ -52,18 +52,6 @@
     "replacements": "Modul TP4056 s MicroUSB portem, IP2312 (pro rychlejší nabíjení)"
   },
   {
-    "id": 1795772009023,
-    "addedAt": "2026-11-27",
-    "name": "SMD výkonová tlumivka (induktor)",
-    "type": "Pasivní součástka, indukčnost 10 µH",
-    "category": "Tlumivky",
-    "qty": 5,
-    "location": "V praci",
-    "params": "Hodnota: 10 µH, Pouzdro: SMD (typicky např. 3316 nebo 5022)",
-    "pinout": "2 vývody (součástka není polarizovaná)",
-    "usage": "DC/DC měniče, filtrování napájecích zdrojů, potlačení elektromagnetického rušení"
-  },
-  {
     "id": 1795727308508,
     "addedAt": "2026-11-26",
     "name": "IRLR8726 (značení LR8726)",
