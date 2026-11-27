@@ -1,17 +1,5 @@
 [
   {
-    "id": 1795768782076,
-    "addedAt": "2026-11-27",
-    "name": "Miniaturní posuvný přepínač SPDT (řada SS-12D00 / SK-12D07)",
-    "type": "Mechanický posuvný přepínač – jednopólový přepínací (SPDT, ON-ON)",
-    "category": "Nezařazené",
-    "qty": 1,
-    "location": "",
-    "params": "Typické zatížení kontaktů: 0,3 A až 0,5 A při max. 50 V DC; kontaktní odpor < 50 mΩ; montáž THT do DPS s roztečí vývodů 2,54 mm",
-    "pinout": "[1] [2] [3] -> 2 je společný vývod (COM). V levé poloze páčky spojuje 1–2, v pravé poloze spojuje 2–3.",
-    "usage": "Přepínání napájení, volba pracovních režimů a směrování signálů v nízkonapěťové elektronice a prototypových deskách."
-  },
-  {
     "id": 1795767178985,
     "addedAt": "2026-11-27",
     "name": "SMD výkonová tlumivka 10 µH (označení 100)",
