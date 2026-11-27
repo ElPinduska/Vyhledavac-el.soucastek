@@ -5,7 +5,7 @@
     "name": "AMS1117-3.3",
     "type": "Lineární stabilizátor napětí (LDO) s pevným výstupním napětím 3,3 V",
     "category": "LDO,stabilizátory",
-    "qty": 8,
+    "qty": 9,
     "location": "",
     "params": "- Výstupní napětí: 3,3 V\n- Max. vstupní napětí Vin(max): 12 V (absolutní maximum 15 V)\n- Min. vstupní napětí Vin(min): 4,4 V (Vout + dropout)\n- Max. výstupní proud: 1 A\n- Úbytek napětí (Dropout): 1,1 V až 1,3 V při 1 A\n- Klidový proud (Iq): 5 mA (typicky)\n- Pouzdro: SOT-223",
     "pinout": "Pohled zepředu na čelní stranu s nápisem:\n1: ADJ/GND (nastavení/zem)\n2: VOUT (výstup napětí)\n3: VIN (vstup napětí)\n(Poznámka: Velká plocha na zadní straně pouzdra je obvykle spojena s výstupem VOUT)",
