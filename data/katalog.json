@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795808082633,
+    "addedAt": "2026-11-27",
+    "name": "LR8726",
+    "type": "N-kanálový MOSFET (výkonový)",
+    "category": "Tranzistory > Unipolární (MOSFET) > N-kanál",
+    "qty": 8,
+    "location": "Práce",
+    "params": "- Vds (max. napětí): 60V\n- Id (trvalý proud): 30A\n- Id (impulzní): 120A\n- Vgs(th) (prahové napětí): 1V až 2V\n- Vgs pro plné otevření: 4,5V (Logic-Level)\n- Vgs(max): ±20V\n- Rds(on): cca 25-30 mOhm (při 4,5V)\n- Qg (náboj hradla): cca 15 nC\n- Pouzdro: TO-252 (D-PAK) - nutno fyzicky ověřit",
+    "pinout": "1: Gate (G), 2: Drain (D), 3: Source (S), Tab: Drain (D)",
+    "usage": "Spínání zátěže v DC obvodech, PWM regulace otáček motorů, řízení LED pásků z mikrokontrolérů (Arduino/ESP32).",
+    "replacements": "IRLZ44N, FDD6680A, STD30NF06LT4"
+  },
+  {
     "id": 1795807940957,
     "addedAt": "2026-11-27",
     "name": "AO3400 (A09T)",
