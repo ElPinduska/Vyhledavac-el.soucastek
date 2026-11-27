@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795816069928,
+    "addedAt": "2026-11-27",
+    "name": "TTP223 Capacitive Touch Switch Button Sensor Module",
+    "type": "Modul kapacitního dotykového senzoru",
+    "category": "Bloky(ESP32,Arduina,nabíjení,měniče....",
+    "qty": 10,
+    "location": "Prace",
+    "params": "- Napájecí napětí: 2,0 V až 5,5 V\n- Klidový proud: cca 0,5 uA (při 3 V)\n- Reakční doba: cca 60 ms (rychlý režim), 220 ms (úsporný režim)\n- Výstupní úroveň: CMOS (High/Low)\n- Typ výstupu: Přepínatelný (momentový nebo překlápěcí režim)\n- Rozměry: 15 mm x 11 mm",
+    "pinout": "1: VCC (napájení 2-5,5V)\n2: GND (zem)\n3: SIG (výstupní signál)",
+    "usage": "Náhrada mechanických tlačítek v projektech s Arduinem, ESP32 a jinou elektronikou, ovládání osvětlení, dotykové spínačei.",
+    "replacements": "TTP224 (4 kanály), TTP229 (16 kanálů), jiné moduly založené na čipu TTP223."
+  },
+  {
     "id": 1795815930411,
     "addedAt": "2026-11-27",
     "name": "LM2596 DC-DC Step-Down Buck Converter Module",
