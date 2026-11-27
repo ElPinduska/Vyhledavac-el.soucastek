@@ -51,18 +51,6 @@
     "usage": "DC/DC měniče, filtrování napájecích zdrojů, potlačení elektromagnetického rušení"
   },
   {
-    "id": 1795733126242,
-    "addedAt": "2026-11-26",
-    "name": "RS1J (značení SMD: RJ)",
-    "type": "Rychlá usměrňovací dioda (Fast Recovery Rectifier)",
-    "category": "Diody > Rychlé (Fast recovery)",
-    "qty": 1,
-    "location": "Prace",
-    "params": "VRRM = 600 V, IF(AV) = 1 A, IFSM = 30 A, VF = 1,3 V (při 1 A), trr = 250 ns, pouzdro DO-214AC (SMA)",
-    "pinout": "2 vývody (SMD pouzdro SMA): Katoda (K) je označena proužkem na těle součástky (horní strana na obrázku), Anoda (A) je na opačné straně. [K] ---|<|--- [A]",
-    "usage": "Rychlé usměrňování ve spínaných zdrojích (SMPS), ochrana proti přepětí a zpětnému proudu, volnoběžné (freewheeling) a tlumicí (snubber) obvody v napájecích adaptérech a měničích."
-  },
-  {
     "id": 1795730760087,
     "addedAt": "2026-11-26",
     "name": "ATtiny13A (ATMEL TINY13A)",
