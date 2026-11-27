@@ -78,19 +78,6 @@
     "replacements": "Jakákoliv SMD tlumivka s indukčností 10 µH a stejným nebo vyšším jmenovitým proudem a kompatibilními rozměry"
   },
   {
-    "id": 1795799405836,
-    "addedAt": "2026-11-27",
-    "name": "BC337",
-    "type": "Bipolární tranzistor (BJT) – NPN",
-    "category": "Tranzistory > Bipolární > NPN",
-    "qty": 5,
-    "location": "Práce",
-    "params": "Vceo: 45V, Ic: 800mA, hFE: 100-630, Ptot: 625mW. Pouzdro: obvykle TO-92, přesné pouzdro je potřeba ověřit fyzicky.",
-    "pinout": "Při pohledu na plochou stranu (piny dolů, zleva doprava): 1: Emitor (E), 2: Báze (B), 3: Kolektor (C).",
-    "usage": "Univerzální spínací a zesilovací aplikace v nízkofrekvenčních obvodech.",
-    "replacements": "BC337-25, BC337-40, 2N2222 (při dodržení limitů proudu), PN2222A."
-  },
-  {
     "id": 1795797204128,
     "addedAt": "2026-11-27",
     "name": "SMD elektrolytický kondenzátor 220uF 25V",
