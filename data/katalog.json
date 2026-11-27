@@ -5,7 +5,7 @@
     "name": "SMD výkonová tlumivka (induktor)",
     "type": "Pasivní součástka, indukčnost 10 µH",
     "category": "Tlumivky",
-    "qty": 2,
+    "qty": 3,
     "location": "",
     "params": "Hodnota: 10 µH, Pouzdro: SMD (typicky např. 3316 nebo 5022)",
     "pinout": "2 vývody (součástka není polarizovaná)",
