@@ -18,7 +18,7 @@
     "name": "Modul pro nabíjení a ochranu Li-ion akumulátorů (TP4056 s ochranou)",
     "type": "Modul pro správu napájení (nabíječka s ochranou proti vybití/přebití)",
     "category": "Bloky(ESP32,Arduina,nabíjení,měniče....",
-    "qty": 18,
+    "qty": 19,
     "location": "V práci",
     "params": "Vstupní napětí 5V (USB-C), nabíjecí proud až 1A, ochrana akumulátoru (DW01/8205A)",
     "pinout": "USB-C vstup; B+/B- pro připojení baterie; Out+/Out- pro napájení zátěže",
