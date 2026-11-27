@@ -1,5 +1,17 @@
 [
   {
+    "id": 1795767178985,
+    "addedAt": "2026-11-27",
+    "name": "SMD výkonová tlumivka 10 µH (označení 100)",
+    "type": "Výkonová SMD indukčnost / stíněná feritová tlumivka",
+    "category": "Nezařazené",
+    "qty": 4,
+    "location": "Prace",
+    "params": "Indukčnost: 10 µH (kód 100 = 10 × 10⁰ µH), typická tolerance ±20 %, jmenovitý proud závisí na přesné velikosti pouzdra (řádově jednotky A), pouzdro: SMD stíněné (např. řada CDRH)",
+    "pinout": "2 spodní SMD pájecí plošky; součástka je nepolarizovaná (tečka u označení indikuje začátek vinutí pro správnou orientaci z hlediska EMI)",
+    "usage": "Spínané zdroje a DC-DC měniče (buck/boost), vyhlazovací a odrušovací filtry napájení"
+  },
+  {
     "id": 1795733126242,
     "addedAt": "2026-11-26",
     "name": "RS1J (značení SMD: RJ)",
