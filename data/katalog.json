@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795797204128,
+    "addedAt": "2026-11-27",
+    "name": "SMD elektrolytický kondenzátor 220uF 25V",
+    "type": "Hliníkový elektrolytický kondenzátor pro povrchovou montáž (SMD)",
+    "category": "Kondenzátory > Normální",
+    "qty": 4,
+    "location": "Prace",
+    "params": "Kapacita: 220uF, Napětí: 25V, Pouzdro: SMD (typicky průměr 8mm)",
+    "pinout": "Polarizovaná součástka: černý pruh na horní straně značí záporný pól (-), druhý vývod je kladný (+)",
+    "usage": "Filtrování napájecího napětí, vyhlazování zvlnění, vazební kondenzátor v napájecích obvodech",
+    "replacements": "Jakýkoliv SMD elektrolytický kondenzátor se stejnou nebo vyšší kapacitou (220uF+) a stejným nebo vyšším napětím (25V+), pokud se vejde na desku"
+  },
+  {
     "id": 1795784475669,
     "addedAt": "2026-11-27",
     "name": "Modul pro nabíjení a ochranu Li-ion akumulátorů (TP4056 s ochranou)",
