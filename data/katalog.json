@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795807940957,
+    "addedAt": "2026-11-27",
+    "name": "AO3400 (A09T)",
+    "type": "N-kanálový MOSFET tranzistor (enhancement mode)",
+    "category": "Tranzistory > Unipolární (MOSFET) > N-kanál",
+    "qty": 100,
+    "location": "Práce",
+    "params": "- Max. napětí Vds: 30V\n- Trvalý proud Id: 5,8A (při 10V), impulzní proud Idm: 30A\n- Prahové napětí Vgs(th): 0,7V - 1,45V\n- Napětí pro plné otevření: 4,5V (jedná se o Logic-Level MOSFET)\n- Max. napětí Gate Vgs(max): ±12V\n- Odpor RDS(on): cca 19mΩ (při Vgs=10V), 22mΩ (při Vgs=4,5V)\n- Náboj hradla Qg: cca 8nC\n- Pouzdro: SOT-23",
+    "pinout": "SOT-23 (čelní pohled):\n1: Gate (G)\n2: Source (S)\n3: Drain (D)",
+    "usage": "Spínání zátěže v nízkonapěťových aplikacích, PWM řízení motorů, LED drivery, správa napájení v přenosných zařízeních.",
+    "replacements": "AO3400A, Si2302, IRLML6402 (kontrola polarity), 2N7002 (menší výkon)"
+  },
+  {
     "id": 1795807574762,
     "addedAt": "2026-11-27",
     "name": "IRLZ44N",
