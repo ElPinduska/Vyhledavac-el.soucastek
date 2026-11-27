@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795800207858,
+    "addedAt": "2026-11-27",
+    "name": "SMD tlumivka 100µH (kód 101)",
+    "type": "Pasivní induktivní součástka (tlumivka)",
+    "category": "Tlumivky",
+    "qty": 10,
+    "location": "Prace",
+    "params": "Indukčnost 100 µH, pouzdro SMD (typicky např. 3316, 4420 nebo podobné), tolerance obvykle ±20%",
+    "pinout": "Dvouvývodová součástka, nezávislá na polaritě (svorky 1 a 2)",
+    "usage": "Filtrování napájení, DC-DC měniče, vyhlazování proudových špiček",
+    "replacements": "Jakákoliv SMD tlumivka se stejnou indukčností (100 µH), odpovídajícím saturačním proudem a fyzickými rozměry"
+  },
+  {
     "id": 1795800085893,
     "addedAt": "2026-11-27",
     "name": "AO3400 (označení A09T)",
