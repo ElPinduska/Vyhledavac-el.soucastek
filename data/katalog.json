@@ -65,19 +65,6 @@
     "replacements": "Jakákoliv SMD tlumivka s indukčností 10 µH a stejným nebo vyšším jmenovitým proudem a kompatibilními rozměry"
   },
   {
-    "id": 1795799628256,
-    "addedAt": "2026-11-27",
-    "name": "LR8726",
-    "type": "Unipolární tranzistor (MOSFET) – N-kanál",
-    "category": "Tranzistory > Unipolární (MOSFET) > N-kanál",
-    "qty": 8,
-    "location": "Prace",
-    "params": "Vds: 30V, Id: 60A, Rds(on) < 8mΩ, Pouzdro: TO-252 (D-PAK)",
-    "pinout": "1: Gate (G), 2: Drain (D), 3: Source (S), Tab: Drain (D)",
-    "usage": "Spínací zdroje, řízení motorů, DC-DC měniče, správa napájení",
-    "replacements": "IRLR8726, jakýkoliv N-MOSFET s podobnými parametry v pouzdře TO-252 (např. řady od výrobců Infineon, ON Semi)"
-  },
-  {
     "id": 1795799405836,
     "addedAt": "2026-11-27",
     "name": "BC337",
