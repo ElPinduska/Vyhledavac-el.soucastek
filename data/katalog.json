@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795784475669,
+    "addedAt": "2026-11-27",
+    "name": "Modul pro nabíjení a ochranu Li-ion akumulátorů (TP4056 s ochranou)",
+    "type": "Modul pro správu napájení (nabíječka s ochranou proti vybití/přebití)",
+    "category": "Bloky(ESP32,Arduina,nabíjení,měniče....",
+    "qty": 1,
+    "location": "",
+    "params": "Vstupní napětí 5V (USB-C), nabíjecí proud až 1A, ochrana akumulátoru (DW01/8205A)",
+    "pinout": "USB-C vstup; B+/B- pro připojení baterie; Out+/Out- pro napájení zátěže",
+    "usage": "Nabíjení Li-ion článků (18650 atd.) z USB zdroje s integrovanou ochranou proti přebití a podvybití",
+    "replacements": "Modul TP4056 s MicroUSB portem, IP2312 (pro rychlejší nabíjení)"
+  },
+  {
     "id": 1795784115210,
     "addedAt": "2026-11-27",
     "name": "TP4056 USB-C nabíjecí modul pro Li-Ion baterie",
