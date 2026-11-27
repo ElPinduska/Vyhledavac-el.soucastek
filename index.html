@@ -195,6 +195,9 @@
 
         <img id="img-preview" class="preview-img hidden" alt="Náhled součástky" />
         <div id="status"></div>
+        <div class="actions">
+          <button id="btn-retry" class="primary hidden">🔁 Zkusit analýzu znovu</button>
+        </div>
       </div>
 
       <!-- VÝSLEDEK ANALÝZY + ROZHODNUTÍ -->
@@ -329,8 +332,8 @@
     const DEFAULT_MODEL = "gemini-4-hydrogen";
     const FALLBACK_MODELS = [
       "gemini-4-hydrogen",
-      "gemini-3.8-flash",
-      "gemini-2.5-flash"
+      "gemini-3.8-flash"
+      "gemini-4-neon"
     ];
 
     const CFG_KEY = "part_catalog_cfg_v1";
@@ -340,6 +343,7 @@
     let catalogFileSha = null;
     let editingItemId = null;
 
+    const retryBtn = document.getElementById("btn-retry");
     const resCatSelect = document.getElementById("res-category");
     const filterCatSelect = document.getElementById("filter-category");
     CATEGORIES.forEach(c => {
@@ -394,6 +398,20 @@
       document.getElementById(id).addEventListener("change", handleFileSelect);
     });
 
+    retryBtn.addEventListener("click", async () => {
+      if (!currentImageBase64) return;
+      const statusEl = document.getElementById("status");
+      retryBtn.classList.add("hidden");
+      document.getElementById("result-panel").classList.add("hidden");
+      try {
+        const usedModel = await analyzeWithGemini(currentImageBase64, currentImageMime, statusEl);
+        statusEl.textContent = `Hotovo (model: ${usedModel}). Zkontroluj údaje a zvol, zda součástku uložit.`;
+      } catch (err) {
+        statusEl.textContent = "Chyba při analýze: " + err.message;
+        retryBtn.classList.remove("hidden");
+      }
+    });
+
     function sleep(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -403,6 +421,7 @@
       if (!file) return;
       const statusEl = document.getElementById("status");
       statusEl.textContent = "Zmenšuji snímek a odesílám na Gemini...";
+      retryBtn.classList.add("hidden");
       document.getElementById("result-panel").classList.add("hidden");
 
       try {
@@ -419,6 +438,7 @@
         statusEl.textContent = `Hotovo (model: ${usedModel}). Zkontroluj údaje a zvol, zda součástku uložit.`;
       } catch (err) {
         statusEl.textContent = "Chyba při analýze: " + err.message;
+        if (currentImageBase64) retryBtn.classList.remove("hidden");
       }
     }
 
@@ -565,6 +585,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 
     document.getElementById("btn-discard").addEventListener("click", () => {
       currentImageBase64 = null;
+      retryBtn.classList.add("hidden");
       document.getElementById("img-preview").classList.add("hidden");
       document.getElementById("result-panel").classList.add("hidden");
       document.getElementById("status").textContent = "Výsledek zahozen, nic nebylo uloženo.";
