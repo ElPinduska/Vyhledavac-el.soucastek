@@ -3,7 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
   <title>Katalog součástek – AI & GitHub</title>
+
+  <!-- Favicon + ikona integrovaného obvodu (IC) přímo v HTML -->
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cg stroke='%2394a3b8' stroke-width='3' stroke-linecap='round'%3E%3Cline x1='20' y1='6' x2='20' y2='14'/%3E%3Cline x1='32' y1='6' x2='32' y2='14'/%3E%3Cline x1='44' y1='6' x2='44' y2='14'/%3E%3Cline x1='20' y1='50' x2='20' y2='58'/%3E%3Cline x1='32' y1='50' x2='32' y2='58'/%3E%3Cline x1='44' y1='50' x2='44' y2='58'/%3E%3Cline x1='6' y1='20' x2='14' y2='20'/%3E%3Cline x1='6' y1='32' x2='14' y2='32'/%3E%3Cline x1='6' y1='44' x2='14' y2='44'/%3E%3Cline x1='50' y1='20' x2='58' y2='20'/%3E%3Cline x1='50' y1='32' x2='58' y2='32'/%3E%3Cline x1='50' y1='44' x2='58' y2='44'/%3E%3C/g%3E%3Crect x='14' y='14' width='36' height='36' rx='6' fill='%231e293b' stroke='%2338bdf8' stroke-width='3'/%3E%3Crect x='23' y='23' width='18' height='18' rx='3' fill='%230b1220' stroke='%2322c55e' stroke-width='2'/%3E%3Ccircle cx='20' cy='20' r='2.2' fill='%2338bdf8'/%3E%3C/svg%3E"
+  />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="manifest" href="manifest.json" />
+
   <style>
     :root {
       --bg: #0f172a;
@@ -163,6 +174,29 @@
       border-radius: 999px;
       margin-bottom: 6px;
     }
+    .repl-badge {
+      display: inline-block;
+      font-size: 0.76rem;
+      background: rgba(34, 197, 94, 0.16);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.45);
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+      margin-left: 4px;
+      font-weight: 600;
+    }
+    .repl-box {
+      margin-top: 6px;
+      color: #bae6fd;
+      border-radius: 8px;
+    }
+    .repl-box.highlighted {
+      background: rgba(34, 197, 94, 0.14);
+      border: 1px solid rgba(34, 197, 94, 0.55);
+      color: #dcfce7;
+      padding: 6px 8px;
+    }
     .item-card {
       background: var(--card-2);
       border: 1px solid var(--border);
@@ -251,6 +285,9 @@
         <label class="field-label">Nejčastější použití</label>
         <textarea id="res-usage" rows="2"></textarea>
 
+        <label class="field-label">Vhodné náhrady / ekvivalenty</label>
+        <textarea id="res-replacements" rows="2" placeholder="např. IRLZ44N, AO3400, 1N5819..."></textarea>
+
         <div class="actions">
           <button id="btn-merge-gh" class="warn hidden">➕ Přičíst k existující položce</button>
           <button id="btn-save-gh" class="success">💾 Uložit do katalogu (GitHub)</button>
@@ -271,7 +308,7 @@
           </div>
           <div>
             <label class="field-label">Hledat v katalogu</label>
-            <input id="search-catalog" type="search" placeholder="např. IRLZ44N, N-kanál, 100nF..." />
+            <input id="search-catalog" type="search" placeholder="např. IRLZ44N, N-kanál, náhrada..." />
           </div>
         </div>
         <div class="actions">
@@ -293,7 +330,7 @@
         <input id="cfg-gemini-key" type="password" placeholder="AIza..." />
 
         <label class="field-label">Preferovaný Gemini model (první v řadě)</label>
-        <input id="cfg-gemini-model" type="text" value="gemini-4-hydrogen" />
+        <input id="cfg-gemini-model" type="text" value="gemini-3.1-flash-lite" />
 
         <label class="field-label">GitHub Personal Access Token</label>
         <input id="cfg-gh-token" type="password" placeholder="ghp_... nebo github_pat_..." />
@@ -567,11 +604,9 @@
       const targetKey = normalizePartKey(name);
       if (!targetKey || targetKey.length < 2) return null;
 
-      // 1. Přesná shoda normalizovaného názvu
       let match = catalogCache.find(item => normalizePartKey(item.name) === targetKey);
       if (match) return match;
 
-      // 2. Shoda na začátku názvu (např. "TLF 10uH..." vs "TLF 10uH")
       match = catalogCache.find(item => {
         const itemKey = normalizePartKey(item.name);
         return itemKey.length >= 3 && (itemKey.startsWith(targetKey) || targetKey.startsWith(itemKey));
@@ -616,6 +651,11 @@
       }
     }
 
+    function formatReplacements(val) {
+      if (Array.isArray(val)) return val.map(x => String(x || "").trim()).filter(Boolean).join(", ");
+      return String(val || "").trim();
+    }
+
     async function analyzeWithGemini(base64, mimeType, statusEl) {
       const cfg = getConfig();
       if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
@@ -631,7 +671,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
   "category": "jedna položka přesně ze seznamu výše",
   "params": "klíčové elektrické hodnoty, napětí, proud, tolerance, pouzdro",
   "pinout": "přehledný popis nebo ASCII schéma vývodů",
-  "usage": "nejčastější praktické použití"
+  "usage": "nejčastější praktické použití",
+  "replacements": "stručný seznam vhodných náhrad nebo ekvivalentů se stejnou funkcí a podobnými parametry (nebo údaj o omezení, pokud jde o specializovaný prvek)"
 }`;
 
       const preferred = (cfg.geminiModel || DEFAULT_MODEL).trim();
@@ -654,6 +695,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           document.getElementById("res-params").value = parsed.params || "";
           document.getElementById("res-pinout").textContent = parsed.pinout || "Neuvedeno";
           document.getElementById("res-usage").value = parsed.usage || "";
+          document.getElementById("res-replacements").value = formatReplacements(parsed.replacements);
           resQtyInput.value = 1;
 
           await ensureCatalogLoadedQuietly();
@@ -785,11 +827,13 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         const addQty = Math.max(0, Number(resQtyInput.value) || 0);
         const nextQty = (Number(catalogCache[idx].qty) || 0) + addQty;
         const enteredLoc = resLocInput.value.trim();
+        const enteredRepl = document.getElementById("res-replacements").value.trim();
 
         catalogCache[idx] = {
           ...catalogCache[idx],
           qty: nextQty,
-          location: enteredLoc || catalogCache[idx].location || ""
+          location: enteredLoc || catalogCache[idx].location || "",
+          replacements: enteredRepl || catalogCache[idx].replacements || ""
         };
 
         await saveCatalogToGitHub(cfg, `Přičteno ${addQty} ks u součástky: ${catalogCache[idx].name} (celkem ${nextQty} ks)`);
@@ -823,7 +867,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           location: resLocInput.value.trim(),
           params: document.getElementById("res-params").value.trim(),
           pinout: document.getElementById("res-pinout").textContent.trim(),
-          usage: document.getElementById("res-usage").value.trim()
+          usage: document.getElementById("res-usage").value.trim(),
+          replacements: document.getElementById("res-replacements").value.trim()
         };
 
         catalogCache.unshift(newItem);
@@ -902,6 +947,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       const locVal = document.getElementById(`edit-loc-${itemId}`).value.trim();
       const paramsVal = document.getElementById(`edit-params-${itemId}`).value.trim();
       const usageVal = document.getElementById(`edit-usage-${itemId}`).value.trim();
+      const replVal = document.getElementById(`edit-repl-${itemId}`).value.trim();
 
       catStatus.textContent = "Ukládám úpravy na GitHub...";
       try {
@@ -917,7 +963,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           qty: qtyVal,
           location: locVal,
           params: paramsVal,
-          usage: usageVal
+          usage: usageVal,
+          replacements: replVal
         };
 
         await saveCatalogToGitHub(cfg, `Úprava součástky: ${catalogCache[idx].name}`);
@@ -939,28 +986,34 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       const selectedCat = filterCatSelect.value;
       const query = document.getElementById("search-catalog").value.trim().toLowerCase();
 
-      const filtered = catalogCache.filter(item => {
-        const matchCat = selectedCat === "ALL" || item.category === selectedCat;
-        const haystack = `${item.name} ${item.type || ""} ${item.category} ${item.params} ${item.usage} ${item.location}`.toLowerCase();
-        const matchQuery = !query || haystack.includes(query);
-        return matchCat && matchQuery;
-      });
+      const filtered = catalogCache
+        .map(item => {
+          const matchCat = selectedCat === "ALL" || item.category === selectedCat;
+          const replText = formatReplacements(item.replacements);
+          const replMatch = Boolean(query) && replText.toLowerCase().includes(query);
+          const haystack = `${item.name} ${item.type || ""} ${item.category} ${item.params} ${item.usage} ${replText} ${item.location}`.toLowerCase();
+          const matchQuery = !query || haystack.includes(query);
+          return { item, replText, replMatch, visible: matchCat && matchQuery };
+        })
+        .filter(entry => entry.visible);
 
       if (!filtered.length) {
         listEl.innerHTML = `<div class="panel muted">Žádné součástky neodpovídají filtru.</div>`;
         return;
       }
 
-      listEl.innerHTML = filtered.map(item => {
+      listEl.innerHTML = filtered.map(({ item, replText, replMatch }) => {
         const isEditing = String(editingItemId) === String(item.id);
         return `
         <div class="item-card">
           <span class="cat-path">${escapeHtml(item.category)}</span>
+          ${replMatch ? `<span class="repl-badge">🔁 Shoda v náhradách</span>` : ""}
           <div><strong>${escapeHtml(item.name)}</strong> — <span class="muted">${Number(item.qty) || 0} ks${item.location ? ` · ${escapeHtml(item.location)}` : ""} · ${item.addedAt || ""}</span></div>
           ${item.type ? `<div style="margin-top:6px;"><strong>Základní typ:</strong> ${escapeHtml(item.type)}</div>` : ""}
           ${item.params ? `<div style="margin-top:4px;"><strong>Parametry:</strong> ${escapeHtml(item.params)}</div>` : ""}
           ${item.pinout ? `<pre class="pinout" style="margin-top:6px;">${escapeHtml(item.pinout)}</pre>` : ""}
           ${item.usage ? `<div class="muted" style="margin-top:4px;"><strong>Použití:</strong> ${escapeHtml(item.usage)}</div>` : ""}
+          ${replText ? `<div class="repl-box ${replMatch ? "highlighted" : ""}"><strong>Náhrady:</strong> ${escapeHtml(replText)}</div>` : ""}
 
           <div class="item-actions">
             <button class="sm" onclick="adjustItemQty('${item.id}', -1)">-1 ks</button>
@@ -997,6 +1050,9 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 
               <label class="field-label">Použití</label>
               <textarea id="edit-usage-${item.id}" rows="2">${escapeHtml(item.usage || "")}</textarea>
+
+              <label class="field-label">Náhrady / ekvivalenty</label>
+              <textarea id="edit-repl-${item.id}" rows="2">${escapeHtml(replText)}</textarea>
 
               <div class="item-actions">
                 <button class="sm success" onclick="saveEditedItem('${item.id}')">💾 Uložit změny</button>
