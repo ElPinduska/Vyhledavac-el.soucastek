@@ -243,6 +243,7 @@
         <div class="row">
           <label for="file-camera" class="btn-file primary">📷 Vyfotit součástku</label>
           <label for="file-gallery" class="btn-file">🖼️ Vybrat z galerie</label>
+          <button type="button" id="btn-manual-entry">✍️ Vypsat součástku ručně</button>
         </div>
         <input type="file" id="file-camera" accept="image/*" capture="environment" class="sr-file" />
         <input type="file" id="file-gallery" accept="image/*" class="sr-file" />
@@ -254,13 +255,13 @@
         </div>
       </div>
 
-      <!-- VÝSLEDEK ANALÝZY + ROZHODNUTÍ -->
+      <!-- VÝSLEDEK ANALÝZY / RUČNÍ ZADÁNÍ -->
       <div id="result-panel" class="panel hidden">
         <div id="duplicate-alert" class="dup-alert hidden"></div>
 
         <span id="res-category-badge" class="cat-path"></span>
         <label class="field-label">Název / Označení</label>
-        <input id="res-name" type="text" />
+        <input id="res-name" type="text" placeholder="např. IRLZ44N, 100uF 25V, K275..." />
 
         <label class="field-label">Základní typ (např. Unipolární tranzistor MOSFET – N-kanál)</label>
         <input id="res-type" type="text" placeholder="např. Unipolární tranzistor (MOSFET) – N-kanál" />
@@ -280,14 +281,14 @@
           </div>
         </div>
 
-        <label class="field-label">Hodnoty a klíčové parametry</label>
-        <textarea id="res-params" rows="3"></textarea>
+        <label class="field-label">Hodnoty, pouzdro a klíčové parametry</label>
+        <textarea id="res-params" rows="3" placeholder="např. 55V, 47A, Rds(on) 22mΩ, pouzdro TO-220..."></textarea>
 
         <label class="field-label">Pinout</label>
-        <pre id="res-pinout" class="pinout"></pre>
+        <textarea id="res-pinout" rows="2" placeholder="např. 1: Gate, 2: Drain, 3: Source (nebo nech prázdné)"></textarea>
 
         <label class="field-label">Nejčastější použití</label>
-        <textarea id="res-usage" rows="2"></textarea>
+        <textarea id="res-usage" rows="2" placeholder="např. spínání zátěže 3.3V/5V logikou..."></textarea>
 
         <label class="field-label">Vhodné náhrady / ekvivalenty</label>
         <textarea id="res-replacements" rows="2" placeholder="např. IRLZ44N, AO3400, 1N5819..."></textarea>
@@ -468,6 +469,33 @@
 
     ["file-camera", "file-gallery"].forEach(id => {
       document.getElementById(id).addEventListener("change", handleFileSelect);
+    });
+
+    document.getElementById("btn-manual-entry").addEventListener("click", async () => {
+      currentImageBase64 = null;
+      matchedExistingItem = null;
+      retryBtn.classList.add("hidden");
+      dupAlertEl.classList.add("hidden");
+      mergeBtn.classList.add("hidden");
+      document.getElementById("img-preview").classList.add("hidden");
+
+      resNameInput.value = "";
+      document.getElementById("res-type").value = "";
+      resCatSelect.value = "Nezařazené";
+      document.getElementById("res-category-badge").textContent = "Nezařazené";
+      resQtyInput.value = 1;
+      resLocInput.value = "";
+      document.getElementById("res-params").value = "";
+      document.getElementById("res-pinout").value = "";
+      document.getElementById("res-usage").value = "";
+      document.getElementById("res-replacements").value = "";
+
+      document.getElementById("result-panel").classList.remove("hidden");
+      document.getElementById("status").textContent = "Ruční zadání součástky – vyplň údaje (pouzdro, parametry apod.) a ulož do katalogu.";
+      resNameInput.focus();
+
+      await ensureCatalogLoadedQuietly();
+      updateDuplicateUi();
     });
 
     retryBtn.addEventListener("click", async () => {
@@ -702,7 +730,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           resCatSelect.value = matchedCat;
           document.getElementById("res-category-badge").textContent = matchedCat;
           document.getElementById("res-params").value = parsed.params || "";
-          document.getElementById("res-pinout").textContent = parsed.pinout || "Neuvedeno";
+          document.getElementById("res-pinout").value = parsed.pinout || "";
           document.getElementById("res-usage").value = parsed.usage || "";
           document.getElementById("res-replacements").value = formatReplacements(parsed.replacements);
           resQtyInput.value = 1;
@@ -905,18 +933,24 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) {
             throw new Error("Vyplň údaje ke GitHubu v Nastavení.");
           }
+          const partName = resNameInput.value.trim();
+          if (!partName) {
+            resNameInput.focus();
+            throw new Error("Vyplň prosím Název / Označení součástky.");
+          }
+
           statusEl.textContent = "Ukládám do katalogu na GitHub...";
 
           const newItem = {
             id: Date.now(),
             addedAt: new Date().toISOString().slice(0, 10),
-            name: resNameInput.value.trim(),
+            name: partName,
             type: document.getElementById("res-type").value.trim(),
             category: resCatSelect.value,
             qty: Math.max(0, Number(resQtyInput.value) || 0),
             location: resLocInput.value.trim(),
             params: document.getElementById("res-params").value.trim(),
-            pinout: document.getElementById("res-pinout").textContent.trim(),
+            pinout: document.getElementById("res-pinout").value.trim(),
             usage: document.getElementById("res-usage").value.trim(),
             replacements: document.getElementById("res-replacements").value.trim()
           };
