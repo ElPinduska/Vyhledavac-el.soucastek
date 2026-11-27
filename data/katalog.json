@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795815930411,
+    "addedAt": "2026-11-27",
+    "name": "LM2596 DC-DC Step-Down Buck Converter Module",
+    "type": "Modul měniče napětí (Buck konvertor)",
+    "category": "Bloky(ESP32,Arduina,nabíjení,měniče....",
+    "qty": 3,
+    "location": "Prace",
+    "params": "- Vstupní napětí: 4,5 V až 40 V\n- Výstupní napětí: 1,5 V až 35 V (nastavitelné trimrem)\n- Výstupní proud: Max. 3 A (doporučeno trvale 2 A s chlazením)\n- Účinnost: až 92 %\n- Frekvence spínání: 150 kHz\n- Pracovní teplota: -40 °C až +85 °C\n- Rozměry modulu: 43 mm x 21 mm x 14 mm",
+    "pinout": "IN+: Kladný vstup\nIN-: Záporný vstup (GND)\nOUT+: Kladný výstup\nOUT-: Záporný výstup (GND)",
+    "usage": "Napájení projektů s Arduinem, snižování napětí z baterií (např. 12V na 5V), univerzální regulovatelný napájecí zdroj",
+    "replacements": "LM2596S (samotný čip), XL4015 (výkonnější verze do 5 A), LM2576 (starší verze, nižší frekvence)"
+  },
+  {
     "id": 1795815169915,
     "addedAt": "2026-11-27",
     "name": "AMS1117-3.3",
