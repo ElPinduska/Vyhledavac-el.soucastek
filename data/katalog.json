@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795800085893,
+    "addedAt": "2026-11-27",
+    "name": "AO3400 (označení A09T)",
+    "type": "Unipolární tranzistor (MOSFET) – N-kanál",
+    "category": "Tranzistory > Unipolární (MOSFET) > N-kanál",
+    "qty": 100,
+    "location": "Prace",
+    "params": "Vds=30V, Id=5.8A, Rds(on)<33mOhm, pouzdro SOT-23",
+    "pinout": "1: Gate, 2: Source, 3: Drain",
+    "usage": "Spínání zátěže, PWM řízení, správa napájení v bateriových zařízeních",
+    "replacements": "Si2302, IRLML6402 (pozor na polaritu), AO3400A"
+  },
+  {
     "id": 1795799970524,
     "addedAt": "2026-11-27",
     "name": "SS34",
