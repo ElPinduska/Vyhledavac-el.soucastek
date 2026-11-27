@@ -113,6 +113,11 @@
       padding: 16px;
       margin-bottom: 16px;
     }
+    .manual-ai-box {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
     .dup-alert {
       background: rgba(245, 158, 11, 0.14);
       border: 1px solid rgba(245, 158, 11, 0.5);
@@ -243,10 +248,17 @@
         <div class="row">
           <label for="file-camera" class="btn-file primary">📷 Vyfotit součástku</label>
           <label for="file-gallery" class="btn-file">🖼️ Vybrat z galerie</label>
-          <button type="button" id="btn-manual-entry">✍️ Vypsat součástku ručně</button>
         </div>
         <input type="file" id="file-camera" accept="image/*" capture="environment" class="sr-file" />
         <input type="file" id="file-gallery" accept="image/*" class="sr-file" />
+
+        <div class="manual-ai-box">
+          <label class="field-label" style="margin-top:0;">Nebo zadej označení součástky textem (bez fotky)</label>
+          <div class="row">
+            <input id="manual-query-input" type="text" placeholder="např. BC327, IRLZ44N, NE555, 1N5819..." style="flex:2;" />
+            <button type="button" id="btn-analyze-text" class="primary" style="flex:1;">🔍 Zjistit údaje přes AI</button>
+          </div>
+        </div>
 
         <img id="img-preview" class="preview-img hidden" alt="Náhled součástky" />
         <div id="status"></div>
@@ -255,13 +267,13 @@
         </div>
       </div>
 
-      <!-- VÝSLEDEK ANALÝZY / RUČNÍ ZADÁNÍ -->
+      <!-- VÝSLEDEK ANALÝZY + ROZHODNUTÍ -->
       <div id="result-panel" class="panel hidden">
         <div id="duplicate-alert" class="dup-alert hidden"></div>
 
         <span id="res-category-badge" class="cat-path"></span>
         <label class="field-label">Název / Označení</label>
-        <input id="res-name" type="text" placeholder="např. IRLZ44N, 100uF 25V, K275..." />
+        <input id="res-name" type="text" />
 
         <label class="field-label">Základní typ (např. Unipolární tranzistor MOSFET – N-kanál)</label>
         <input id="res-type" type="text" placeholder="např. Unipolární tranzistor (MOSFET) – N-kanál" />
@@ -282,13 +294,13 @@
         </div>
 
         <label class="field-label">Hodnoty, pouzdro a klíčové parametry</label>
-        <textarea id="res-params" rows="3" placeholder="např. 55V, 47A, Rds(on) 22mΩ, pouzdro TO-220..."></textarea>
+        <textarea id="res-params" rows="3"></textarea>
 
         <label class="field-label">Pinout</label>
-        <textarea id="res-pinout" rows="2" placeholder="např. 1: Gate, 2: Drain, 3: Source (nebo nech prázdné)"></textarea>
+        <textarea id="res-pinout" rows="2"></textarea>
 
         <label class="field-label">Nejčastější použití</label>
-        <textarea id="res-usage" rows="2" placeholder="např. spínání zátěže 3.3V/5V logikou..."></textarea>
+        <textarea id="res-usage" rows="2"></textarea>
 
         <label class="field-label">Vhodné náhrady / ekvivalenty</label>
         <textarea id="res-replacements" rows="2" placeholder="např. IRLZ44N, AO3400, 1N5819..."></textarea>
@@ -403,6 +415,7 @@
     const CFG_KEY = "part_catalog_cfg_v1";
     let currentImageBase64 = null;
     let currentImageMime = "image/jpeg";
+    let lastTextQuery = "";
     let catalogCache = [];
     let catalogFileSha = null;
     let editingItemId = null;
@@ -414,6 +427,8 @@
     const dupAlertEl = document.getElementById("duplicate-alert");
     const mergeBtn = document.getElementById("btn-merge-gh");
     const saveGhBtn = document.getElementById("btn-save-gh");
+    const manualQueryInput = document.getElementById("manual-query-input");
+    const analyzeTextBtn = document.getElementById("btn-analyze-text");
     const resNameInput = document.getElementById("res-name");
     const resQtyInput = document.getElementById("res-qty");
     const resLocInput = document.getElementById("res-location");
@@ -471,44 +486,58 @@
       document.getElementById(id).addEventListener("change", handleFileSelect);
     });
 
-    document.getElementById("btn-manual-entry").addEventListener("click", async () => {
+    async function runTextLookup() {
+      const query = manualQueryInput.value.trim();
+      const statusEl = document.getElementById("status");
+      if (!query) {
+        manualQueryInput.focus();
+        statusEl.textContent = "Zadej prosím označení součástky (např. BC327).";
+        return;
+      }
+
       currentImageBase64 = null;
-      matchedExistingItem = null;
+      lastTextQuery = query;
       retryBtn.classList.add("hidden");
-      dupAlertEl.classList.add("hidden");
-      mergeBtn.classList.add("hidden");
       document.getElementById("img-preview").classList.add("hidden");
+      document.getElementById("result-panel").classList.add("hidden");
+      analyzeTextBtn.disabled = true;
 
-      resNameInput.value = "";
-      document.getElementById("res-type").value = "";
-      resCatSelect.value = "Nezařazené";
-      document.getElementById("res-category-badge").textContent = "Nezařazené";
-      resQtyInput.value = 1;
-      resLocInput.value = "";
-      document.getElementById("res-params").value = "";
-      document.getElementById("res-pinout").value = "";
-      document.getElementById("res-usage").value = "";
-      document.getElementById("res-replacements").value = "";
+      try {
+        const usedModel = await analyzePart({ textQuery: query }, statusEl);
+        statusEl.textContent = `Hotovo pro „${query}“ (model: ${usedModel}). Zkontroluj údaje (případně dopiš pouzdro) a ulož.`;
+      } catch (err) {
+        statusEl.textContent = "Chyba při zjišťování údajů: " + err.message;
+        retryBtn.classList.remove("hidden");
+      } finally {
+        analyzeTextBtn.disabled = false;
+      }
+    }
 
-      document.getElementById("result-panel").classList.remove("hidden");
-      document.getElementById("status").textContent = "Ruční zadání součástky – vyplň údaje (pouzdro, parametry apod.) a ulož do katalogu.";
-      resNameInput.focus();
-
-      await ensureCatalogLoadedQuietly();
-      updateDuplicateUi();
+    analyzeTextBtn.addEventListener("click", runTextLookup);
+    manualQueryInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        runTextLookup();
+      }
     });
 
     retryBtn.addEventListener("click", async () => {
-      if (!currentImageBase64) return;
+      if (!currentImageBase64 && !lastTextQuery) return;
       const statusEl = document.getElementById("status");
       retryBtn.classList.add("hidden");
       document.getElementById("result-panel").classList.add("hidden");
+      analyzeTextBtn.disabled = true;
       try {
-        const usedModel = await analyzeWithGemini(currentImageBase64, currentImageMime, statusEl);
+        const payload = currentImageBase64
+          ? { base64: currentImageBase64, mimeType: currentImageMime }
+          : { textQuery: lastTextQuery };
+        const usedModel = await analyzePart(payload, statusEl);
         statusEl.textContent = `Hotovo (model: ${usedModel}). Zkontroluj údaje a zvol, zda součástku uložit.`;
       } catch (err) {
         statusEl.textContent = "Chyba při analýze: " + err.message;
         retryBtn.classList.remove("hidden");
+      } finally {
+        analyzeTextBtn.disabled = false;
       }
     });
 
@@ -528,13 +557,14 @@
         const resized = await resizeImageToBase64(file, 1024, 0.78);
         currentImageBase64 = resized.base64;
         currentImageMime = "image/jpeg";
+        lastTextQuery = "";
 
         const imgPreview = document.getElementById("img-preview");
         imgPreview.src = "data:image/jpeg;base64," + currentImageBase64;
         imgPreview.classList.remove("hidden");
 
         e.target.value = "";
-        const usedModel = await analyzeWithGemini(currentImageBase64, currentImageMime, statusEl);
+        const usedModel = await analyzePart({ base64: currentImageBase64, mimeType: currentImageMime }, statusEl);
         statusEl.textContent = `Hotovo (model: ${usedModel}). Zkontroluj údaje a zvol, zda součástku uložit.`;
       } catch (err) {
         statusEl.textContent = "Chyba při analýze: " + err.message;
@@ -574,7 +604,7 @@
       });
     }
 
-    async function callSingleModel(model, apiKey, base64, mimeType, prompt, statusEl) {
+    async function callSingleModel(model, apiKey, parts, statusEl) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const retryDelays = [1500, 3500];
       let res;
@@ -593,12 +623,7 @@
               generationConfig: {
                 responseMimeType: "application/json"
               },
-              contents: [{
-                parts: [
-                  { text: prompt },
-                  { inlineData: { mimeType, data: base64 } }
-                ]
-              }]
+              contents: [{ parts }]
             })
           });
         } catch (netErr) {
@@ -693,11 +718,13 @@
       return String(val || "").trim();
     }
 
-    async function analyzeWithGemini(base64, mimeType, statusEl) {
+    async function analyzePart(payload, statusEl) {
       const cfg = getConfig();
       if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
 
-      const prompt = `Identifikuj elektronickou součástku na obrázku v češtině.
+      const isImage = Boolean(payload.base64);
+      const prompt = isImage
+        ? `Identifikuj elektronickou součástku na obrázku v češtině.
 Vyber nejbližší kategorii přesně z tohoto seznamu:
 ${CATEGORIES.map(c => "- " + c).join("\n")}
 
@@ -710,7 +737,25 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
   "pinout": "přehledný popis nebo ASCII schéma vývodů",
   "usage": "nejčastější praktické použití",
   "replacements": "stručný seznam vhodných náhrad nebo ekvivalentů se stejnou funkcí a podobnými parametry (nebo údaj o omezení, pokud jde o specializovaný prvek)"
+}`
+        : `Identifikuj elektronickou součástku podle zadaného označení "${payload.textQuery}" v češtině.
+Vyber nejbližší kategorii přesně z tohoto seznamu:
+${CATEGORIES.map(c => "- " + c).join("\n")}
+
+Odpověz POUZE platným JSON objektem s těmito klíči:
+{
+  "name": "přesné označení / název součástky (vycházej ze zadání ${payload.textQuery})",
+  "type": "základní typ a charakteristika součástky, např. Bipolární tranzistor (BJT) – PNP",
+  "category": "jedna položka přesně ze seznamu výše",
+  "params": "klíčové elektrické hodnoty, napětí, proud, výkon/zesílení, obvyklé pouzdro (uveď, že přesné pouzdro je potřeba ověřit fyzicky)",
+  "pinout": "přehledný popis nebo ASCII schéma vývodů pro standardní pouzdro této součástky",
+  "usage": "nejčastější praktické použití",
+  "replacements": "stručný seznam vhodných náhrad nebo ekvivalentů se stejnou funkcí a podobnými parametry"
 }`;
+
+      const parts = isImage
+        ? [{ text: prompt }, { inlineData: { mimeType: payload.mimeType, data: payload.base64 } }]
+        : [{ text: prompt }];
 
       const preferred = (cfg.geminiModel || DEFAULT_MODEL).trim();
       const candidateModels = [...new Set([preferred, ...FALLBACK_MODELS])];
@@ -722,9 +767,9 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           statusEl.textContent = `Zkouším model ${model} (${i + 1}/${candidateModels.length})...`;
         }
         try {
-          const parsed = await callSingleModel(model, cfg.geminiKey, base64, mimeType, prompt, statusEl);
+          const parsed = await callSingleModel(model, cfg.geminiKey, parts, statusEl);
 
-          resNameInput.value = parsed.name || "Neznámá součástka";
+          resNameInput.value = parsed.name || payload.textQuery || "Neznámá součástka";
           document.getElementById("res-type").value = parsed.type || "";
           const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Nezařazené";
           resCatSelect.value = matchedCat;
@@ -757,6 +802,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 
     document.getElementById("btn-discard").addEventListener("click", () => {
       currentImageBase64 = null;
+      lastTextQuery = "";
       matchedExistingItem = null;
       retryBtn.classList.add("hidden");
       dupAlertEl.classList.add("hidden");
@@ -962,6 +1008,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 
           statusEl.textContent = `Uloženo do kategorie „${newItem.category}“ na GitHubu!`;
           matchedExistingItem = null;
+          lastTextQuery = "";
+          manualQueryInput.value = "";
           dupAlertEl.classList.add("hidden");
           mergeBtn.classList.add("hidden");
           document.getElementById("result-panel").classList.add("hidden");
