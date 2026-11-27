@@ -13,6 +13,7 @@
       --muted: #94a3b8;
       --accent: #38bdf8;
       --accent-2: #22c55e;
+      --warn: #f59e0b;
       --danger: #ef4444;
       --border: #334155;
     }
@@ -71,6 +72,12 @@
       border: none;
       font-weight: 600;
     }
+    button.warn {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fcd34d;
+      border-color: rgba(245, 158, 11, 0.5);
+      font-weight: 600;
+    }
     button.danger {
       background: rgba(239, 68, 68, 0.15);
       color: #fca5a5;
@@ -90,6 +97,15 @@
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 16px;
+    }
+    .dup-alert {
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fde68a;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 0.9rem;
     }
     label.field-label {
       display: block;
@@ -202,6 +218,8 @@
 
       <!-- VÝSLEDEK ANALÝZY + ROZHODNUTÍ -->
       <div id="result-panel" class="panel hidden">
+        <div id="duplicate-alert" class="dup-alert hidden"></div>
+
         <span id="res-category-badge" class="cat-path"></span>
         <label class="field-label">Název / Označení</label>
         <input id="res-name" type="text" />
@@ -234,6 +252,7 @@
         <textarea id="res-usage" rows="2"></textarea>
 
         <div class="actions">
+          <button id="btn-merge-gh" class="warn hidden">➕ Přičíst k existující položce</button>
           <button id="btn-save-gh" class="success">💾 Uložit do katalogu (GitHub)</button>
           <button id="btn-discard" class="danger">🗑️ Smazat / Zahodit</button>
         </div>
@@ -343,8 +362,14 @@
     let catalogCache = [];
     let catalogFileSha = null;
     let editingItemId = null;
+    let matchedExistingItem = null;
 
     const retryBtn = document.getElementById("btn-retry");
+    const dupAlertEl = document.getElementById("duplicate-alert");
+    const mergeBtn = document.getElementById("btn-merge-gh");
+    const resNameInput = document.getElementById("res-name");
+    const resQtyInput = document.getElementById("res-qty");
+    const resLocInput = document.getElementById("res-location");
     const resCatSelect = document.getElementById("res-category");
     const filterCatSelect = document.getElementById("filter-category");
     CATEGORIES.forEach(c => {
@@ -530,6 +555,67 @@
       return JSON.parse(cleaned);
     }
 
+    function normalizePartKey(str) {
+      return String(str || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+    }
+
+    function findMatchingCatalogItem(name) {
+      const targetKey = normalizePartKey(name);
+      if (!targetKey || targetKey.length < 2) return null;
+
+      // 1. Přesná shoda normalizovaného názvu
+      let match = catalogCache.find(item => normalizePartKey(item.name) === targetKey);
+      if (match) return match;
+
+      // 2. Shoda na začátku názvu (např. "TLF 10uH..." vs "TLF 10uH")
+      match = catalogCache.find(item => {
+        const itemKey = normalizePartKey(item.name);
+        return itemKey.length >= 3 && (itemKey.startsWith(targetKey) || targetKey.startsWith(itemKey));
+      });
+      return match || null;
+    }
+
+    function updateDuplicateUi() {
+      const currentName = resNameInput.value.trim();
+      const addedQty = Math.max(0, Number(resQtyInput.value) || 0);
+      matchedExistingItem = findMatchingCatalogItem(currentName);
+
+      if (!matchedExistingItem) {
+        dupAlertEl.classList.add("hidden");
+        mergeBtn.classList.add("hidden");
+        return;
+      }
+
+      const existingQty = Number(matchedExistingItem.qty) || 0;
+      const totalQty = existingQty + addedQty;
+      const locText = matchedExistingItem.location ? `<strong>${escapeHtml(matchedExistingItem.location)}</strong>` : "<em>neuvedeno</em>";
+
+      dupAlertEl.innerHTML = `
+        ⚠️ <strong>Tuto součástku už v katalogu máš!</strong><br />
+        Existující položka: <strong>${escapeHtml(matchedExistingItem.name)}</strong> ·
+        aktuálně skladem: <strong>${existingQty} ks</strong> ·
+        umístění: ${locText} ·
+        kategorie: <em>${escapeHtml(matchedExistingItem.category || "Nezařazené")}</em>.
+      `;
+      dupAlertEl.classList.remove("hidden");
+      mergeBtn.textContent = `➕ Přičíst k existující položce (bude celkem ${totalQty} ks)`;
+      mergeBtn.classList.remove("hidden");
+    }
+
+    async function ensureCatalogLoadedQuietly() {
+      const cfg = getConfig();
+      if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) return;
+      try {
+        await fetchLatestCatalog(cfg);
+      } catch (_) {
+        // Při analýze zůstaneme u případné dřívější cache
+      }
+    }
+
     async function analyzeWithGemini(base64, mimeType, statusEl) {
       const cfg = getConfig();
       if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
@@ -560,7 +646,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         try {
           const parsed = await callSingleModel(model, cfg.geminiKey, base64, mimeType, prompt, statusEl);
 
-          document.getElementById("res-name").value = parsed.name || "Neznámá součástka";
+          resNameInput.value = parsed.name || "Neznámá součástka";
           document.getElementById("res-type").value = parsed.type || "";
           const matchedCat = CATEGORIES.includes(parsed.category) ? parsed.category : "Nezařazené";
           resCatSelect.value = matchedCat;
@@ -568,7 +654,10 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           document.getElementById("res-params").value = parsed.params || "";
           document.getElementById("res-pinout").textContent = parsed.pinout || "Neuvedeno";
           document.getElementById("res-usage").value = parsed.usage || "";
-          document.getElementById("res-qty").value = 1;
+          resQtyInput.value = 1;
+
+          await ensureCatalogLoadedQuietly();
+          updateDuplicateUi();
           document.getElementById("result-panel").classList.remove("hidden");
 
           return model;
@@ -580,13 +669,19 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       throw new Error("Všechny modely selhaly:\n" + errors.join(" | "));
     }
 
+    resNameInput.addEventListener("input", updateDuplicateUi);
+    resQtyInput.addEventListener("input", updateDuplicateUi);
+
     resCatSelect.addEventListener("change", () => {
       document.getElementById("res-category-badge").textContent = resCatSelect.value;
     });
 
     document.getElementById("btn-discard").addEventListener("click", () => {
       currentImageBase64 = null;
+      matchedExistingItem = null;
       retryBtn.classList.add("hidden");
+      dupAlertEl.classList.add("hidden");
+      mergeBtn.classList.add("hidden");
       document.getElementById("img-preview").classList.add("hidden");
       document.getElementById("result-panel").classList.add("hidden");
       document.getElementById("status").textContent = "Výsledek zahozen, nic nebylo uloženo.";
@@ -671,6 +766,43 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       }
     }
 
+    mergeBtn.addEventListener("click", async () => {
+      const cfg = getConfig();
+      const statusEl = document.getElementById("status");
+      try {
+        if (!cfg.ghToken || !cfg.ghOwner || !cfg.ghRepo) {
+          throw new Error("Vyplň údaje ke GitHubu v Nastavení.");
+        }
+        statusEl.textContent = "Přičítám kusy k existující položce na GitHubu...";
+        await fetchLatestCatalog(cfg);
+
+        const target = findMatchingCatalogItem(resNameInput.value.trim()) || matchedExistingItem;
+        if (!target) throw new Error("Původní položka se nepodařila dohledat.");
+
+        const idx = catalogCache.findIndex(x => String(x.id) === String(target.id));
+        if (idx === -1) throw new Error("Položka v katalogu neexistuje.");
+
+        const addQty = Math.max(0, Number(resQtyInput.value) || 0);
+        const nextQty = (Number(catalogCache[idx].qty) || 0) + addQty;
+        const enteredLoc = resLocInput.value.trim();
+
+        catalogCache[idx] = {
+          ...catalogCache[idx],
+          qty: nextQty,
+          location: enteredLoc || catalogCache[idx].location || ""
+        };
+
+        await saveCatalogToGitHub(cfg, `Přičteno ${addQty} ks u součástky: ${catalogCache[idx].name} (celkem ${nextQty} ks)`);
+        statusEl.textContent = `Přičteno ${addQty} ks k „${catalogCache[idx].name}“ — nyní v katalogu celkem ${nextQty} ks!`;
+        matchedExistingItem = null;
+        dupAlertEl.classList.add("hidden");
+        mergeBtn.classList.add("hidden");
+        document.getElementById("result-panel").classList.add("hidden");
+      } catch (err) {
+        statusEl.textContent = "Chyba přičítání: " + err.message;
+      }
+    });
+
     document.getElementById("btn-save-gh").addEventListener("click", async () => {
       const cfg = getConfig();
       const statusEl = document.getElementById("status");
@@ -684,11 +816,11 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         const newItem = {
           id: Date.now(),
           addedAt: new Date().toISOString().slice(0, 10),
-          name: document.getElementById("res-name").value.trim(),
+          name: resNameInput.value.trim(),
           type: document.getElementById("res-type").value.trim(),
           category: resCatSelect.value,
-          qty: Math.max(0, Number(document.getElementById("res-qty").value) || 0),
-          location: document.getElementById("res-location").value.trim(),
+          qty: Math.max(0, Number(resQtyInput.value) || 0),
+          location: resLocInput.value.trim(),
           params: document.getElementById("res-params").value.trim(),
           pinout: document.getElementById("res-pinout").textContent.trim(),
           usage: document.getElementById("res-usage").value.trim()
@@ -698,6 +830,9 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         await saveCatalogToGitHub(cfg, `Přidána součástka: ${newItem.name}`);
 
         statusEl.textContent = `Uloženo do kategorie „${newItem.category}“ na GitHubu!`;
+        matchedExistingItem = null;
+        dupAlertEl.classList.add("hidden");
+        mergeBtn.classList.add("hidden");
         document.getElementById("result-panel").classList.add("hidden");
       } catch (err) {
         statusEl.textContent = "Chyba ukládání: " + err.message;
