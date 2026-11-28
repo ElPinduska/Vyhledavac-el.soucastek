@@ -145,13 +145,46 @@
     }
     .row { display: flex; gap: 10px; flex-wrap: wrap; }
     .row > * { flex: 1; min-width: 150px; }
-    .preview-img {
-      max-width: 100%;
-      max-height: 260px;
-      border-radius: 10px;
-      display: block;
-      margin: 12px auto;
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .preview-card {
+      position: relative;
+      background: var(--card-2);
       border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px;
+    }
+    .preview-card img {
+      width: 100%;
+      height: 125px;
+      object-fit: cover;
+      border-radius: 7px;
+      display: block;
+    }
+    .preview-caption {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 5px;
+      text-align: center;
+    }
+    .remove-photo-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.65);
+      font-size: 0.9rem;
+      font-weight: 700;
+      line-height: 1;
     }
     pre.pinout {
       background: var(--card-2);
@@ -250,11 +283,13 @@
     <section id="view-scan">
       <div class="panel">
         <div class="row">
-          <label for="file-camera" class="btn-file primary">📷 Vyfotit součástku</label>
-          <label for="file-gallery" class="btn-file">🖼️ Vybrat z galerie</label>
+          <label for="file-camera" id="label-camera" class="btn-file primary">📷 Vyfotit součástku</label>
+          <label for="file-gallery" id="label-gallery" class="btn-file">🖼️ Vybrat z galerie (více fotek)</label>
         </div>
         <input type="file" id="file-camera" accept="image/*" capture="environment" class="sr-file" />
-        <input type="file" id="file-gallery" accept="image/*" class="sr-file" />
+        <input type="file" id="file-gallery" accept="image/*" multiple class="sr-file" />
+
+        <div id="preview-grid" class="preview-grid hidden"></div>
 
         <div class="manual-ai-box">
           <label class="field-label" style="margin-top:0;">Nebo zadej označení součástky textem (bez fotky)</label>
@@ -264,10 +299,10 @@
           </div>
         </div>
 
-        <img id="img-preview" class="preview-img hidden" alt="Náhled součástky" />
         <div id="status"></div>
         <div class="actions">
           <button id="btn-retry" class="primary hidden">🔁 Zkusit analýzu znovu</button>
+          <button type="button" id="btn-clear-photos" class="danger hidden">🗑️ Vymazat fotky</button>
         </div>
       </div>
 
@@ -417,9 +452,10 @@
     ];
 
     const CFG_KEY = "part_catalog_cfg_v1";
-    let currentImageBase64 = null;
-    let currentImageMime = "image/jpeg";
+    let currentImages = []; // [{ base64, mimeType }]
     let lastTextQuery = "";
+    let isAnalyzingNow = false;
+    let pendingReanalyzeAfterCurrent = false;
     let catalogCache = [];
     let catalogFileSha = null;
     let editingItemId = null;
@@ -428,6 +464,10 @@
     let isCatalogBusy = false;
 
     const retryBtn = document.getElementById("btn-retry");
+    const clearPhotosBtn = document.getElementById("btn-clear-photos");
+    const cameraLabel = document.getElementById("label-camera");
+    const galleryLabel = document.getElementById("label-gallery");
+    const previewGrid = document.getElementById("preview-grid");
     const dupAlertEl = document.getElementById("duplicate-alert");
     const mergeBtn = document.getElementById("btn-merge-gh");
     const saveGhBtn = document.getElementById("btn-save-gh");
@@ -490,6 +530,96 @@
       document.getElementById(id).addEventListener("change", handleFileSelect);
     });
 
+    function updatePhotoButtonsUi() {
+      const count = currentImages.length;
+      if (count > 0) {
+        cameraLabel.textContent = `📷 Vyfotit další fotku (${count})`;
+        galleryLabel.textContent = `🖼️ Přidat fotky z galerie (${count})`;
+        clearPhotosBtn.classList.remove("hidden");
+      } else {
+        cameraLabel.textContent = "📷 Vyfotit součástku";
+        galleryLabel.textContent = "🖼️ Vybrat z galerie (více fotek)";
+        clearPhotosBtn.classList.add("hidden");
+      }
+      renderPhotoPreviews();
+    }
+
+    function renderPhotoPreviews() {
+      if (!currentImages.length) {
+        previewGrid.innerHTML = "";
+        previewGrid.classList.add("hidden");
+        return;
+      }
+      previewGrid.classList.remove("hidden");
+      previewGrid.innerHTML = currentImages.map((img, idx) => `
+        <div class="preview-card">
+          <button type="button" class="remove-photo-btn" title="Odebrat fotku ${idx + 1}" onclick="removePhotoAt(${idx})">×</button>
+          <img src="data:${img.mimeType};base64,${img.base64}" alt="Fotka ${idx + 1}" />
+          <div class="preview-caption">Fotka ${idx + 1}</div>
+        </div>
+      `).join("");
+    }
+
+    async function removePhotoAt(idx) {
+      if (idx < 0 || idx >= currentImages.length) return;
+      currentImages.splice(idx, 1);
+      updatePhotoButtonsUi();
+      const statusEl = document.getElementById("status");
+      if (currentImages.length > 0) {
+        await triggerAnalysisForCurrentState(statusEl);
+      } else if (!lastTextQuery) {
+        document.getElementById("result-panel").classList.add("hidden");
+        retryBtn.classList.add("hidden");
+        statusEl.textContent = "Všechny fotky byly odebrány.";
+      }
+    }
+
+    clearPhotosBtn.addEventListener("click", async () => {
+      currentImages = [];
+      updatePhotoButtonsUi();
+      const statusEl = document.getElementById("status");
+      if (!lastTextQuery) {
+        document.getElementById("result-panel").classList.add("hidden");
+        retryBtn.classList.add("hidden");
+        statusEl.textContent = "Fotky vymazány.";
+      } else {
+        await triggerAnalysisForCurrentState(statusEl);
+      }
+    });
+
+    async function triggerAnalysisForCurrentState(statusEl) {
+      if (isAnalyzingNow) {
+        pendingReanalyzeAfterCurrent = true;
+        return;
+      }
+      isAnalyzingNow = true;
+      retryBtn.classList.add("hidden");
+      analyzeTextBtn.disabled = true;
+
+      try {
+        do {
+          pendingReanalyzeAfterCurrent = false;
+          const payload = currentImages.length > 0
+            ? { images: [...currentImages] }
+            : { textQuery: lastTextQuery };
+          const usedModel = await analyzePart(payload, statusEl);
+          if (!pendingReanalyzeAfterCurrent) {
+            if (currentImages.length > 0) {
+              statusEl.textContent = `Hotovo z ${currentImages.length} ${currentImages.length === 1 ? "fotky" : currentImages.length < 5 ? "fotek" : "fotek"} (model: ${usedModel}). Zkontroluj údaje nebo přidej další fotku.`;
+            } else {
+              statusEl.textContent = `Hotovo pro „${lastTextQuery}“ (model: ${usedModel}). Zkontroluj údaje a ulož.`;
+            }
+          }
+        } while (pendingReanalyzeAfterCurrent);
+      } catch (err) {
+        statusEl.textContent = "Chyba při analýze: " + err.message;
+        if (currentImages.length > 0 || lastTextQuery) retryBtn.classList.remove("hidden");
+      } finally {
+        isAnalyzingNow = false;
+        analyzeTextBtn.disabled = false;
+      }
+    }
+
     async function runTextLookup() {
       const query = manualQueryInput.value.trim();
       const statusEl = document.getElementById("status");
@@ -499,22 +629,11 @@
         return;
       }
 
-      currentImageBase64 = null;
+      currentImages = [];
+      updatePhotoButtonsUi();
       lastTextQuery = query;
-      retryBtn.classList.add("hidden");
-      document.getElementById("img-preview").classList.add("hidden");
       document.getElementById("result-panel").classList.add("hidden");
-      analyzeTextBtn.disabled = true;
-
-      try {
-        const usedModel = await analyzePart({ textQuery: query }, statusEl);
-        statusEl.textContent = `Hotovo pro „${query}“ (model: ${usedModel}). Zkontroluj údaje (případně dopiš pouzdro) a ulož.`;
-      } catch (err) {
-        statusEl.textContent = "Chyba při zjišťování údajů: " + err.message;
-        retryBtn.classList.remove("hidden");
-      } finally {
-        analyzeTextBtn.disabled = false;
-      }
+      await triggerAnalysisForCurrentState(statusEl);
     }
 
     analyzeTextBtn.addEventListener("click", runTextLookup);
@@ -526,23 +645,9 @@
     });
 
     retryBtn.addEventListener("click", async () => {
-      if (!currentImageBase64 && !lastTextQuery) return;
+      if (!currentImages.length && !lastTextQuery) return;
       const statusEl = document.getElementById("status");
-      retryBtn.classList.add("hidden");
-      document.getElementById("result-panel").classList.add("hidden");
-      analyzeTextBtn.disabled = true;
-      try {
-        const payload = currentImageBase64
-          ? { base64: currentImageBase64, mimeType: currentImageMime }
-          : { textQuery: lastTextQuery };
-        const usedModel = await analyzePart(payload, statusEl);
-        statusEl.textContent = `Hotovo (model: ${usedModel}). Zkontroluj údaje a zvol, zda součástku uložit.`;
-      } catch (err) {
-        statusEl.textContent = "Chyba při analýze: " + err.message;
-        retryBtn.classList.remove("hidden");
-      } finally {
-        analyzeTextBtn.disabled = false;
-      }
+      await triggerAnalysisForCurrentState(statusEl);
     });
 
     function sleep(ms) {
@@ -550,29 +655,24 @@
     }
 
     async function handleFileSelect(e) {
-      const file = e.target.files?.[0];
-      if (!file) return;
+      const files = Array.from(e.target.files || []);
+      e.target.value = "";
+      if (!files.length) return;
+
       const statusEl = document.getElementById("status");
-      statusEl.textContent = "Zmenšuji snímek a odesílám na Gemini...";
-      retryBtn.classList.add("hidden");
-      document.getElementById("result-panel").classList.add("hidden");
+      statusEl.textContent = `Zmenšuji ${files.length === 1 ? "snímek" : `${files.length} snímků`}...`;
+      lastTextQuery = "";
 
       try {
-        const resized = await resizeImageToBase64(file, 1024, 0.78);
-        currentImageBase64 = resized.base64;
-        currentImageMime = "image/jpeg";
-        lastTextQuery = "";
-
-        const imgPreview = document.getElementById("img-preview");
-        imgPreview.src = "data:image/jpeg;base64," + currentImageBase64;
-        imgPreview.classList.remove("hidden");
-
-        e.target.value = "";
-        const usedModel = await analyzePart({ base64: currentImageBase64, mimeType: currentImageMime }, statusEl);
-        statusEl.textContent = `Hotovo (model: ${usedModel}). Zkontroluj údaje a zvol, zda součástku uložit.`;
+        for (const file of files) {
+          const resized = await resizeImageToBase64(file, 1024, 0.78);
+          currentImages.push({ base64: resized.base64, mimeType: "image/jpeg" });
+        }
+        updatePhotoButtonsUi();
+        await triggerAnalysisForCurrentState(statusEl);
       } catch (err) {
-        statusEl.textContent = "Chyba při analýze: " + err.message;
-        if (currentImageBase64) retryBtn.classList.remove("hidden");
+        statusEl.textContent = "Chyba při zpracování fotek: " + err.message;
+        if (currentImages.length > 0) retryBtn.classList.remove("hidden");
       }
     }
 
@@ -616,7 +716,7 @@
 
       for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 25000);
+        const timer = setTimeout(() => controller.abort(), 30000);
 
         try {
           res = await fetch(url, {
@@ -632,7 +732,7 @@
           });
         } catch (netErr) {
           clearTimeout(timer);
-          throw new Error(netErr.name === "AbortError" ? "Timeout (25 s)" : netErr.message);
+          throw new Error(netErr.name === "AbortError" ? "Timeout (30 s)" : netErr.message);
         } finally {
           clearTimeout(timer);
         }
@@ -726,7 +826,8 @@
       const cfg = getConfig();
       if (!cfg.geminiKey) throw new Error("Chybí Gemini API klíč v Nastavení.");
 
-      const isImage = Boolean(payload.base64);
+      const images = Array.isArray(payload.images) ? payload.images : [];
+      const hasImages = images.length > 0;
       const detailRules = `DŮLEŽITÉ pravidlo formátování pro pole "params":
 Každý parametr napiš na SAMOSTATNÝ ŘÁDEK začínající pomlčkou "- " (nespojuj vše do jedné věty oddělené čárkami).
 
@@ -755,8 +856,8 @@ Povinné položky podle typu součástky:
 - U diod uveď: typ, max. závěrné napětí Ur, max. proud If, úbytek Uf, rychlost trr (u rychlých), pouzdro.
 - U kondenzátorů, tlumivek, varistorů, triaků/tyristorů, IO a modulů uveď všechny klíčové mezní hodnoty, napěťové/proudové limity a pouzdro.`;
 
-      const prompt = isImage
-        ? `Identifikuj elektronickou součástku na obrázku v češtině.
+      const prompt = hasImages
+        ? `Identifikuj elektronickou součástku na přiložených ${images.length} fotografiích v češtině (může jít o pohled zepředu, zezadu, z boku nebo detail potisku či vývodů – propoj všechny informace dohromady).
 Vyber nejbližší kategorii přesně z tohoto seznamu:
 ${CATEGORIES.map(c => "- " + c).join("\n")}
 
@@ -790,8 +891,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
   "replacements": "stručný seznam vhodných náhrad nebo ekvivalentů se stejnou funkcí a podobnými parametry"
 }`;
 
-      const parts = isImage
-        ? [{ text: prompt }, { inlineData: { mimeType: payload.mimeType, data: payload.base64 } }]
+      const parts = hasImages
+        ? [{ text: prompt }, ...images.map(img => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } }))]
         : [{ text: prompt }];
 
       const preferred = (cfg.geminiModel || DEFAULT_MODEL).trim();
@@ -801,7 +902,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
       for (let i = 0; i < candidateModels.length; i++) {
         const model = candidateModels[i];
         if (statusEl) {
-          statusEl.textContent = `Zkouším model ${model} (${i + 1}/${candidateModels.length})...`;
+          const imgInfo = hasImages ? ` (${images.length} ${images.length === 1 ? "fotka" : "fotky"})` : "";
+          statusEl.textContent = `Zkouším model ${model}${imgInfo} (${i + 1}/${candidateModels.length})...`;
         }
         try {
           const parsed = await callSingleModel(model, cfg.geminiKey, parts, statusEl);
@@ -838,13 +940,13 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
     });
 
     document.getElementById("btn-discard").addEventListener("click", () => {
-      currentImageBase64 = null;
+      currentImages = [];
       lastTextQuery = "";
       matchedExistingItem = null;
+      updatePhotoButtonsUi();
       retryBtn.classList.add("hidden");
       dupAlertEl.classList.add("hidden");
       mergeBtn.classList.add("hidden");
-      document.getElementById("img-preview").classList.add("hidden");
       document.getElementById("result-panel").classList.add("hidden");
       document.getElementById("status").textContent = "Výsledek zahozen, nic nebylo uloženo.";
     });
@@ -1047,6 +1149,8 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
           matchedExistingItem = null;
           lastTextQuery = "";
           manualQueryInput.value = "";
+          currentImages = [];
+          updatePhotoButtonsUi();
           dupAlertEl.classList.add("hidden");
           mergeBtn.classList.add("hidden");
           document.getElementById("result-panel").classList.add("hidden");
