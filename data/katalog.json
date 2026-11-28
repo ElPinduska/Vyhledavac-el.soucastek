@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795888059490,
+    "addedAt": "2026-11-28",
+    "name": "ATtiny13A-SSU",
+    "type": "8-bitový mikrokontrolér s AVR RISC architekturou",
+    "category": "Integrované obvody",
+    "qty": 1,
+    "location": "",
+    "params": "- Provozní napětí: 1,8 V až 5,5 V\n- Flash paměť: 1 KB\n- SRAM: 64 bajtů\n- EEPROM: 64 bajtů\n- Rychlost: až 20 MHz\n- Počet I/O pinů: 6 programovatelných linek\n- ADC: 4 kanály, 10-bit\n- Pouzdro: SOIC-8",
+    "pinout": "1: PB5/RESET, 2: PB3, 3: PB4, 4: GND, 5: PB0, 6: PB1, 7: PB2, 8: VCC",
+    "usage": "Jednoduché vestavěné systémy, řízení motorů, senzory, hobby elektronika, nahrazení diskrétní logiky.",
+    "replacements": "ATtiny13A-SU, ATtiny25, ATtiny45 (v závislosti na kódu a potřebné paměti)."
+  },
+  {
     "id": 1795872373801,
     "addedAt": "2026-11-28",
     "name": "FDC-2S-2 BMS Protection Board",
