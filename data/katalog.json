@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795852910133,
+    "addedAt": "2026-11-28",
+    "name": "NEC PS2561-1 (Optočlen)",
+    "type": "Optočlen (fototranzistorový výstup)",
+    "category": "Integrované obvody",
+    "qty": 1,
+    "location": "Prace",
+    "params": "- Izolační napětí: 5000 Vrms\n- Kolektor-emitor napětí (Vceo): 80 V\n- Kolektorový proud (Ic): 50 mA\n- Přenosový poměr (CTR): 80 až 400 %\n- Propustný proud diody (If): 80 mA\n- Úbytek napětí LED (Vf): 1.15 V typ.\n- Doba sepnutí/vypnutí: 3-5 µs\n- Pouzdro: DIP-4",
+    "pinout": "1: Anoda (LED), 2: Katoda (LED), 3: Emitor (TR), 4: Kolektor (TR)",
+    "usage": "Galvanické oddělení signálů, napájecí zdroje, řízení výkonových prvků, komunikace",
+    "replacements": "PC817, LTV-817, EL817"
+  },
+  {
     "id": 1795816069928,
     "addedAt": "2026-11-27",
     "name": "TTP223 Capacitive Touch Switch Button Sensor Module",
