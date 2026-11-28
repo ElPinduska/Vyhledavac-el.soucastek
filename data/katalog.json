@@ -1,5 +1,18 @@
 [
   {
+    "id": 1795872373801,
+    "addedAt": "2026-11-28",
+    "name": "FDC-2S-2 BMS Protection Board",
+    "type": "Ochranný modul pro 2S Li-ion/Li-pol akumulátory (Battery Management System)",
+    "category": "Bloky(ESP32,Arduina,nabíjení,měniče....",
+    "qty": 5,
+    "location": "Prace",
+    "params": "- Určeno pro: 2 články Li-ion/Li-pol v sérii (7.4V nominální)\n- Max. nabíjecí napětí: 8.4V\n- Nadproudová ochrana: Ano (typicky 5-10A dle osazených MOSFETů)\n- Ochrana proti podbití: Ano (cca 2.5V - 3.0V na článek)\n- Ochrana proti přebití: Ano (cca 4.2V - 4.3V na článek)\n- Osazené IO: FM702A (ochranný obvod) + A5207A (MOSFETy)",
+    "pinout": "B+: Kladný pól baterie; B-: Záporný pól baterie; BM: Středový bod (mezi články); P+: Výstup kladný (nabíjení/zátěž); P-: Výstup záporný (nabíjení/zátěž)",
+    "usage": "Ochrana dvoučlánkových Li-ion bateriových packů proti přebití, hlubokému vybití a zkratu v elektronických zařízeních.",
+    "replacements": "Moduly typu 2S BMS s podobnými rozměry a proudovým zatížením (např. HX-2S-A10)."
+  },
+  {
     "id": 1795852910133,
     "addedAt": "2026-11-28",
     "name": "NEC PS2561-1 (Optočlen)",
