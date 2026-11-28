@@ -291,6 +291,11 @@
 
         <div id="preview-grid" class="preview-grid hidden"></div>
 
+        <div class="actions" id="photo-batch-actions" style="margin-top:12px;">
+          <button type="button" id="btn-analyze-photos" class="success hidden" style="flex:2;">🚀 Analyzovat fotky</button>
+          <button type="button" id="btn-clear-photos" class="danger hidden" style="flex:1;">🗑️ Vymazat fotky</button>
+        </div>
+
         <div class="manual-ai-box">
           <label class="field-label" style="margin-top:0;">Nebo zadej označení součástky textem (bez fotky)</label>
           <div class="row">
@@ -302,7 +307,6 @@
         <div id="status"></div>
         <div class="actions">
           <button id="btn-retry" class="primary hidden">🔁 Zkusit analýzu znovu</button>
-          <button type="button" id="btn-clear-photos" class="danger hidden">🗑️ Vymazat fotky</button>
         </div>
       </div>
 
@@ -455,7 +459,6 @@
     let currentImages = []; // [{ base64, mimeType }]
     let lastTextQuery = "";
     let isAnalyzingNow = false;
-    let pendingReanalyzeAfterCurrent = false;
     let catalogCache = [];
     let catalogFileSha = null;
     let editingItemId = null;
@@ -464,6 +467,7 @@
     let isCatalogBusy = false;
 
     const retryBtn = document.getElementById("btn-retry");
+    const analyzePhotosBtn = document.getElementById("btn-analyze-photos");
     const clearPhotosBtn = document.getElementById("btn-clear-photos");
     const cameraLabel = document.getElementById("label-camera");
     const galleryLabel = document.getElementById("label-gallery");
@@ -535,10 +539,13 @@
       if (count > 0) {
         cameraLabel.textContent = `📷 Vyfotit další fotku (${count})`;
         galleryLabel.textContent = `🖼️ Přidat fotky z galerie (${count})`;
+        analyzePhotosBtn.textContent = `🚀 Analyzovat fotky (${count} ks)`;
+        analyzePhotosBtn.classList.remove("hidden");
         clearPhotosBtn.classList.remove("hidden");
       } else {
         cameraLabel.textContent = "📷 Vyfotit součástku";
         galleryLabel.textContent = "🖼️ Vybrat z galerie (více fotek)";
+        analyzePhotosBtn.classList.add("hidden");
         clearPhotosBtn.classList.add("hidden");
       }
       renderPhotoPreviews();
@@ -560,65 +567,59 @@
       `).join("");
     }
 
-    async function removePhotoAt(idx) {
+    function removePhotoAt(idx) {
       if (idx < 0 || idx >= currentImages.length) return;
       currentImages.splice(idx, 1);
       updatePhotoButtonsUi();
       const statusEl = document.getElementById("status");
       if (currentImages.length > 0) {
-        await triggerAnalysisForCurrentState(statusEl);
-      } else if (!lastTextQuery) {
-        document.getElementById("result-panel").classList.add("hidden");
+        statusEl.textContent = `Připraveno ${currentImages.length} ${currentImages.length === 1 ? "fotka" : currentImages.length < 5 ? "fotky" : "fotek"}. Můžeš přidat další nebo kliknout na „Analyzovat fotky“.`;
+      } else {
         retryBtn.classList.add("hidden");
         statusEl.textContent = "Všechny fotky byly odebrány.";
       }
     }
 
-    clearPhotosBtn.addEventListener("click", async () => {
+    clearPhotosBtn.addEventListener("click", () => {
       currentImages = [];
       updatePhotoButtonsUi();
       const statusEl = document.getElementById("status");
-      if (!lastTextQuery) {
-        document.getElementById("result-panel").classList.add("hidden");
-        retryBtn.classList.add("hidden");
-        statusEl.textContent = "Fotky vymazány.";
-      } else {
-        await triggerAnalysisForCurrentState(statusEl);
-      }
+      retryBtn.classList.add("hidden");
+      statusEl.textContent = "Fotky vymazány.";
     });
 
     async function triggerAnalysisForCurrentState(statusEl) {
-      if (isAnalyzingNow) {
-        pendingReanalyzeAfterCurrent = true;
-        return;
-      }
+      if (isAnalyzingNow) return;
       isAnalyzingNow = true;
       retryBtn.classList.add("hidden");
+      analyzePhotosBtn.disabled = true;
       analyzeTextBtn.disabled = true;
 
       try {
-        do {
-          pendingReanalyzeAfterCurrent = false;
-          const payload = currentImages.length > 0
-            ? { images: [...currentImages] }
-            : { textQuery: lastTextQuery };
-          const usedModel = await analyzePart(payload, statusEl);
-          if (!pendingReanalyzeAfterCurrent) {
-            if (currentImages.length > 0) {
-              statusEl.textContent = `Hotovo z ${currentImages.length} ${currentImages.length === 1 ? "fotky" : currentImages.length < 5 ? "fotek" : "fotek"} (model: ${usedModel}). Zkontroluj údaje nebo přidej další fotku.`;
-            } else {
-              statusEl.textContent = `Hotovo pro „${lastTextQuery}“ (model: ${usedModel}). Zkontroluj údaje a ulož.`;
-            }
-          }
-        } while (pendingReanalyzeAfterCurrent);
+        const payload = currentImages.length > 0
+          ? { images: [...currentImages] }
+          : { textQuery: lastTextQuery };
+        const usedModel = await analyzePart(payload, statusEl);
+        if (currentImages.length > 0) {
+          statusEl.textContent = `Hotovo z ${currentImages.length} ${currentImages.length === 1 ? "fotky" : currentImages.length < 5 ? "fotek" : "fotek"} (model: ${usedModel}). Zkontroluj údaje a ulož.`;
+        } else {
+          statusEl.textContent = `Hotovo pro „${lastTextQuery}“ (model: ${usedModel}). Zkontroluj údaje a ulož.`;
+        }
       } catch (err) {
         statusEl.textContent = "Chyba při analýze: " + err.message;
         if (currentImages.length > 0 || lastTextQuery) retryBtn.classList.remove("hidden");
       } finally {
         isAnalyzingNow = false;
+        analyzePhotosBtn.disabled = false;
         analyzeTextBtn.disabled = false;
       }
     }
+
+    analyzePhotosBtn.addEventListener("click", async () => {
+      if (!currentImages.length) return;
+      const statusEl = document.getElementById("status");
+      await triggerAnalysisForCurrentState(statusEl);
+    });
 
     async function runTextLookup() {
       const query = manualQueryInput.value.trim();
@@ -660,8 +661,9 @@
       if (!files.length) return;
 
       const statusEl = document.getElementById("status");
-      statusEl.textContent = `Zmenšuji ${files.length === 1 ? "snímek" : `${files.length} snímků`}...`;
+      statusEl.textContent = `Přidávám ${files.length === 1 ? "snímek" : `${files.length} snímků`} do sady...`;
       lastTextQuery = "";
+      retryBtn.classList.add("hidden");
 
       try {
         for (const file of files) {
@@ -669,10 +671,10 @@
           currentImages.push({ base64: resized.base64, mimeType: "image/jpeg" });
         }
         updatePhotoButtonsUi();
-        await triggerAnalysisForCurrentState(statusEl);
+        const cnt = currentImages.length;
+        statusEl.textContent = `Připraveno ${cnt} ${cnt === 1 ? "fotka" : cnt < 5 ? "fotky" : "fotek"}. Klikni na „📷 Vyfotit další fotku“ pro další stranu, nebo na „🚀 Analyzovat fotky (${cnt} ks)“.`;
       } catch (err) {
         statusEl.textContent = "Chyba při zpracování fotek: " + err.message;
-        if (currentImages.length > 0) retryBtn.classList.remove("hidden");
       }
     }
 
@@ -903,7 +905,7 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
         const model = candidateModels[i];
         if (statusEl) {
           const imgInfo = hasImages ? ` (${images.length} ${images.length === 1 ? "fotka" : "fotky"})` : "";
-          statusEl.textContent = `Zkouším model ${model}${imgInfo} (${i + 1}/${candidateModels.length})...`;
+          statusEl.textContent = `Odesílám na model ${model}${imgInfo} (${i + 1}/${candidateModels.length})...`;
         }
         try {
           const parsed = await callSingleModel(model, cfg.geminiKey, parts, statusEl);
@@ -1101,6 +1103,9 @@ Odpověz POUZE platným JSON objektem s těmito klíči:
 
           statusEl.textContent = `Přičteno ${addQty} ks k „${finalName}“ — nyní v katalogu celkem ${nextQty} ks!`;
           matchedExistingItem = null;
+          lastTextQuery = "";
+          currentImages = [];
+          updatePhotoButtonsUi();
           dupAlertEl.classList.add("hidden");
           mergeBtn.classList.add("hidden");
           document.getElementById("result-panel").classList.add("hidden");
