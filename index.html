@@ -296,6 +296,15 @@
 
         <div id="preview-grid" class="preview-grid hidden"></div>
 
+        <div id="photo-note-box" class="hidden" style="margin-top:10px;">
+          <label class="field-label" style="margin-top:0;">Poznámka / upřesnění k fotkám (nepovinné)</label>
+          <input
+            id="photo-note-input"
+            type="text"
+            placeholder="např. zaměř se jen na odpor vlevo, vedle je tranzistor co znám..."
+          />
+        </div>
+
         <div class="actions" id="photo-batch-actions" style="margin-top:12px;">
           <button type="button" id="btn-analyze-photos" class="success hidden" style="flex:2;">🚀 Analyzovat fotky</button>
           <button type="button" id="btn-clear-photos" class="danger hidden" style="flex:1;">🗑️ Vymazat fotky</button>
@@ -475,6 +484,8 @@
     const retryBtn = document.getElementById("btn-retry");
     const analyzePhotosBtn = document.getElementById("btn-analyze-photos");
     const clearPhotosBtn = document.getElementById("btn-clear-photos");
+    const photoNoteBox = document.getElementById("photo-note-box");
+    const photoNoteInput = document.getElementById("photo-note-input");
     const cameraLabel = document.getElementById("label-camera");
     const galleryLabel = document.getElementById("label-gallery");
     const previewGrid = document.getElementById("preview-grid");
@@ -552,12 +563,15 @@
       if (count > 0) {
         cameraLabel.textContent = `📷 Vyfotit další fotku (${count})`;
         galleryLabel.textContent = `🖼️ Přidat fotky z galerie (${count})`;
+        photoNoteBox.classList.remove("hidden");
         analyzePhotosBtn.textContent = `🚀 Analyzovat fotky (${count} ks)`;
         analyzePhotosBtn.classList.remove("hidden");
         clearPhotosBtn.classList.remove("hidden");
       } else {
         cameraLabel.textContent = "📷 Vyfotit součástku";
         galleryLabel.textContent = "🖼️ Vybrat z galerie (více fotek)";
+        photoNoteBox.classList.add("hidden");
+        photoNoteInput.value = "";
         analyzePhotosBtn.classList.add("hidden");
         clearPhotosBtn.classList.add("hidden");
       }
@@ -609,8 +623,9 @@
       analyzeTextBtn.disabled = true;
 
       try {
+        const note = photoNoteInput.value.trim();
         const payload = currentImages.length > 0
-          ? { images: [...currentImages] }
+          ? { images: [...currentImages], note }
           : { textQuery: lastTextQuery };
         const usedModel = await analyzePart(payload, statusEl);
         if (currentImages.length > 0) {
@@ -686,7 +701,7 @@
         }
         updatePhotoButtonsUi();
         const cnt = currentImages.length;
-        statusEl.textContent = `Připraveno ${cnt} ${cnt === 1 ? "fotka" : cnt < 5 ? "fotky" : "fotek"}. Klikni na „📷 Vyfotit další fotku“ pro další stranu, nebo na „🚀 Analyzovat fotky (${cnt} ks)“.`;
+        statusEl.textContent = `Připraveno ${cnt} ${cnt === 1 ? "fotka" : cnt < 5 ? "fotky" : "fotek"}. Můžeš přidat poznámku, další fotku, nebo kliknout na „🚀 Analyzovat fotky (${cnt} ks)“.`;
       } catch (err) {
         statusEl.textContent = "Chyba při zpracování fotek: " + err.message;
       }
@@ -792,7 +807,6 @@
     }
 
     function extractCoreCode(token) {
-      // Např. IRLML2502TRPBF -> IRLML2502, BC547B -> BC547, AMS111733 -> AMS1117
       const m = String(token || "").match(/^([A-Z]{1,6}\d{2,6})/);
       return m ? m[1] : token;
     }
@@ -915,6 +929,11 @@
 
       const images = Array.isArray(payload.images) ? payload.images : [];
       const hasImages = images.length > 0;
+      const noteText = String(payload.note || "").trim();
+      const noteInstruction = noteText
+        ? `\nUPŘESNĚNÍ OD UŽIVATELE K TĚMTO FOTKÁM (respektuj přednostně): "${noteText}"\n`
+        : "";
+
       const detailRules = `DŮLEŽITÉ pravidlo formátování pro pole "params":
 Každý parametr napiš na SAMOSTATNÝ ŘÁDEK začínající pomlčkou "- " (nespojuj vše do jedné věty oddělené čárkami).
 
@@ -944,8 +963,8 @@ Povinné položky podle typu součástky:
 - U kondenzátorů, tlumivek, varistorů, triaků/tyristorů, IO a modulů uveď všechny klíčové mezní hodnoty, napěťové/proudové limity a pouzdro.`;
 
       const prompt = hasImages
-        ? `Identifikuj elektronickou součástku na přiložených ${images.length} fotografiích v češtině (může jít o pohled zepředu, zezadu, z boku nebo detail potisku či vývodů – propoj všechny informace dohromady).
-Vyber nejbližší kategorii přesně z tohoto seznamu:
+        ? `Identifikuj elektronickou součástku na přiložených ${images.length} fotografiích v češtině (může jít o pohled zepředu, zezadu, z boku nebo detail potisku či vývodů – propoj všechny informace dohromady). Pokud je na snímku více součástek a uživatel neuvedl jinak, zaměř se na hlavní/nejvýraznější součástku nebo tu, na kterou ukazuje upřesnění.
+${noteInstruction}Vyber nejbližší kategorii přesně z tohoto seznamu:
 ${CATEGORIES.map(c => "- " + c).join("\n")}
 
 ${detailRules}
